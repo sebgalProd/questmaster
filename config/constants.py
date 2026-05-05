@@ -1,5 +1,7 @@
 """Application-wide constants and enumerations."""
 
+import os
+
 # Game Types
 GAME_TYPE_ONESHOT = "oneshot"
 GAME_TYPE_CAMPAIGN = "campaign"
@@ -98,7 +100,7 @@ PLAYER_ROLE_PERMISSION = "563362270661696"
 GM_ROLE_PERMISSION = "2815265163693120"
 
 # Site
-SITE_BASE_URL = "https://questmaster.club-jdr.fr"
+SITE_BASE_URL = os.environ.get("SITE_BASE_URL", "https://questmaster.club-jdr.fr")
 
 # Discord Embed Colors
 EMBED_COLOR_BLUE = 0x2196F3

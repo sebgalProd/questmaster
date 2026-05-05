@@ -30,6 +30,7 @@ class Discord:
         self.guild_id = guild_id
         self.authorization = bot_token
         self.headers = self._make_headers(self.authorization)
+        self.bot_user_id = self._request(endpoint="/users/@me", method="GET").get("id")
 
     def _make_headers(self, authorization=""):
         headers = {
@@ -188,6 +189,7 @@ class Discord:
                 {"id": role_id, "type": 0, "allow": PLAYER_ROLE_PERMISSION},
                 {"id": self.get_role(self.guild_id)["id"], "type": 0, "deny": "1024"},
                 {"id": gm_id, "type": 1, "allow": GM_ROLE_PERMISSION},
+                {"id": self.bot_user_id, "type": 1, "allow": GM_ROLE_PERMISSION},
             ],
         }
         return self._request(
