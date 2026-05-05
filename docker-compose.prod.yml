@@ -12,8 +12,27 @@ services:
       retries: 5
     ports:
       - "8000:8000"
-    env_file:
-      - .env
+    environment:
+      - FLASK_AUTH_SECRET=${FLASK_AUTH_SECRET}
+      - FLASK_APP=${FLASK_APP}
+      - SITE_BASE_URL=${SITE_BASE_URL}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_HOST=db
+      - REDIS_HOST=redis
+      - DISCORD_CLIENT_ID=${DISCORD_CLIENT_ID}
+      - DISCORD_CLIENT_SECRET=${DISCORD_CLIENT_SECRET}
+      - DISCORD_BOT_TOKEN=${DISCORD_BOT_TOKEN}
+      - DISCORD_REDIRECT_URI=${DISCORD_REDIRECT_URI}
+      - DISCORD_GUILD_NAME=${DISCORD_GUILD_NAME}
+      - DISCORD_GUILD_ID=${DISCORD_GUILD_ID}
+      - DISCORD_GM_ROLE_ID=${DISCORD_GM_ROLE_ID}
+      - DISCORD_ADMIN_ROLE_ID=${DISCORD_ADMIN_ROLE_ID}
+      - DISCORD_PLAYER_ROLE_ID=${DISCORD_PLAYER_ROLE_ID}
+      - POSTS_CHANNEL_ID=${POSTS_CHANNEL_ID}
+      - ADMIN_CHANNEL_ID=${ADMIN_CHANNEL_ID}
+      - UNITTEST_CHANNEL_ID=${UNITTEST_CHANNEL_ID}
     depends_on:
       db:
         condition: service_healthy
@@ -26,8 +45,10 @@ services:
   db:
     image: postgres:15-alpine
     restart: unless-stopped
-    env_file:
-      - .env
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
     volumes:
       - db_data:/var/lib/postgresql/data
     healthcheck:
