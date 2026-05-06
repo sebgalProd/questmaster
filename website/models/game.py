@@ -41,7 +41,7 @@ class Game(db.Model):
     """
 
     __tablename__ = "game"
-    COLORS = {"oneshot": 0x198754, "campaign": 0x0D6EFD}
+    COLORS = {"oneshot": 0x198754, "campaign": 0x0D6EFD, "videogame": 0x9B59B6}
 
     id = db.Column(db.BigInteger(), primary_key=True)
     slug = db.Column(db.String(), unique=True, index=True)
