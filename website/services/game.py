@@ -292,13 +292,15 @@ class GameService:
         # Create voice channel if requested
         logger.info(f"create_voice flag for game {game.id}: {game.create_voice}")
         if game.create_voice:
+            voice_category = self.channel_service.get_voice_category(game.type)
+            voice_parent_id = voice_category.id if voice_category else category.id
             game.voice_channel_id = self.discord.create_voice_channel(
                 name=game.slug.lower(),
-                parent_id=category.id,
+                parent_id=voice_parent_id,
                 role_id=game.role,
                 gm_id=game.gm_id,
             )["id"]
-            logger.info(f"Voice channel created with ID: {game.voice_channel_id}")
+            logger.info(f"Voice channel created with ID: {game.voice_channel_id} in category {voice_parent_id}")
 
         # Post and pin initial message in the game channel
         msg_id = self.discord.send_game_embed(game, embed_type="annonce_details")

@@ -24,6 +24,7 @@ class Channel(db.Model, SerializableMixin):
     id = db.Column(db.String(), primary_key=True)
     type = db.Column(ENUM(*GAME_TYPES, name="game_type_enum", create_type=False), nullable=False)
     size = db.Column(db.Integer(), nullable=False, default=0)
+    voice = db.Column(db.Boolean(), nullable=False, default=False)
 
     @classmethod
     def from_dict(cls, data):
