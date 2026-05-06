@@ -104,7 +104,7 @@ def normalize_search_defaults(
     if not status:
         status = default_status or ["open"]
     if not game_type:
-        game_type = default_type or ["oneshot", "campaign"]
+        game_type = default_type or ["oneshot", "campaign", "videogame"]
     if not restriction:
         restriction = default_restriction or ["all", "16+", "18+"]
     return status, game_type, restriction
@@ -138,7 +138,7 @@ def get_filtered_games(
         request_args_source, ["open", "closed", "archived", "draft"]
     )
     game_type, type_args = parse_multi_checkbox_filter(
-        request_args_source, ["oneshot", "campaign"]
+        request_args_source, ["oneshot", "campaign", "videogame"]
     )
     restriction, restriction_args = parse_multi_checkbox_filter(
         request_args_source, ["all", "16+", "18+"]
