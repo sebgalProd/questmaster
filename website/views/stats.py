@@ -72,8 +72,8 @@ def get_month_games_json():
         return jsonify([]), 400
 
     try:
-        start = parse_date(start_str)
-        end = parse_date(end_str)
+        start = parse_date(start_str).replace(tzinfo=None)
+        end = parse_date(end_str).replace(tzinfo=None)
     except ValueError:
         return jsonify([]), 400
 
