@@ -33,9 +33,9 @@ class AdminView(ModelView):
 
 
 class ChannelAdmin(AdminView):
-    form_columns = ["id", "type", "size"]
-    column_list = ["id", "type", "size"]
-    column_editable_list = ["id", "type", "size"]
+    form_columns = ["id", "type", "size", "voice"]
+    column_list = ["id", "type", "size", "voice"]
+    column_editable_list = ["id", "type", "size", "voice"]
     can_create = True
     can_edit = True
 
