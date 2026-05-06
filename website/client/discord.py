@@ -9,7 +9,13 @@ import time
 import requests
 from unidecode import unidecode
 
-from config.constants import DISCORD_API_BASE_URL, GM_ROLE_PERMISSION, PLAYER_ROLE_PERMISSION
+from config.constants import (
+    DISCORD_API_BASE_URL,
+    GM_ROLE_PERMISSION,
+    GM_VOICE_PERMISSION,
+    PLAYER_ROLE_PERMISSION,
+    PLAYER_VOICE_PERMISSION,
+)
 from website.exceptions import DiscordAPIError
 from website.utils.logger import logger
 
@@ -190,6 +196,33 @@ class Discord:
                 {"id": self.get_role(self.guild_id)["id"], "type": 0, "deny": "1024"},
                 {"id": gm_id, "type": 1, "allow": GM_ROLE_PERMISSION},
                 {"id": self.bot_user_id, "type": 1, "allow": GM_ROLE_PERMISSION},
+            ],
+        }
+        return self._request(
+            endpoint=f"/guilds/{self.guild_id}/channels", method="POST", json=payload
+        )
+
+    def create_voice_channel(self, channel_name: str, parent_id: str, role_id: str, gm_id: str) -> dict:
+        """Create a voice channel in the guild with role-based permissions.
+
+        Args:
+            channel_name: Display name for the channel.
+            parent_id: Parent category ID.
+            role_id: Role ID for player permissions.
+            gm_id: GM user ID for elevated permissions.
+
+        Returns:
+            Dict with the created channel data.
+        """
+        payload = {
+            "name": "-".join(unidecode(channel_name).split()),
+            "type": 2,
+            "parent_id": parent_id,
+            "permission_overwrites": [
+                {"id": role_id, "type": 0, "allow": PLAYER_VOICE_PERMISSION},
+                {"id": self.get_role(self.guild_id)["id"], "type": 0, "deny": "1024"},
+                {"id": gm_id, "type": 1, "allow": GM_VOICE_PERMISSION},
+                {"id": self.bot_user_id, "type": 1, "allow": GM_VOICE_PERMISSION},
             ],
         }
         return self._request(

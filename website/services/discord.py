@@ -177,6 +177,23 @@ class DiscordService:
         """
         return self.bot.create_channel(name, parent_id, role_id, gm_id)
 
+    def create_voice_channel(self, name: str, parent_id: str, role_id: str, gm_id: str) -> dict:
+        """Create a Discord voice channel with permissions.
+
+        Args:
+            name: Channel name (will be sanitized).
+            parent_id: Parent category ID.
+            role_id: Player role ID for permission overwrites.
+            gm_id: GM user ID for permission overwrites.
+
+        Returns:
+            Created channel data including 'id'.
+
+        Raises:
+            DiscordAPIError: If the API request fails.
+        """
+        return self.bot.create_voice_channel(name, parent_id, role_id, gm_id)
+
     def get_channel(self, channel_id: str) -> dict:
         """Get a channel by ID.
 

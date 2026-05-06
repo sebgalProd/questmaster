@@ -212,6 +212,7 @@ class GameService:
                 status=status,
                 img=data.get("img"),
                 party_selection="party_selection" in data,
+                create_voice="create_voice" in data,
                 restriction_tags=parse_restriction_tags(data),
             )
 
@@ -288,6 +289,16 @@ class GameService:
 
         self.channel_service.increment_size(category)
 
+        # Create voice channel if requested
+        if game.create_voice:
+            game.voice_channel_id = self.discord.create_voice_channel(
+                name=game.slug.lower(),
+                parent_id=category.id,
+                role_id=game.role,
+                gm_id=game.gm_id,
+            )["id"]
+            logger.info(f"Voice channel created with ID: {game.voice_channel_id}")
+
         # Post and pin initial message in the game channel
         msg_id = self.discord.send_game_embed(game, embed_type="annonce_details")
         self.discord.pin_message(msg_id, game.channel)
@@ -299,6 +310,9 @@ class GameService:
         Args:
             game: Game instance with potentially created resources.
         """
+        if game.voice_channel_id:
+            self.discord.delete_channel(game.voice_channel_id)
+            logger.info(f"Voice channel {game.voice_channel_id} deleted")
         if game.channel:
             self.discord.delete_channel(game.channel)
             logger.info(f"Channel {game.channel} deleted")
@@ -346,6 +360,7 @@ class GameService:
             game.length = data["length"]
             game.party_size = data["party_size"]
             game.party_selection = "party_selection" in data
+            game.create_voice = "create_voice" in data
             game.xp = data["xp"]
             game.session_length = data["session_length"]
             game.frequency = data.get("frequency") or None
@@ -566,6 +581,13 @@ class GameService:
             game: Game instance.
         """
         self.channel_service.adjust_category_size(self.discord, game)
+
+        if game.voice_channel_id:
+            try:
+                self.discord.delete_channel(game.voice_channel_id)
+                logger.info(f"Game {game.id} voice channel {game.voice_channel_id} has been deleted")
+            except DiscordAPIError as e:
+                logger.warning(f"Failed to delete voice channel for game {game.id}: {e}")
 
         try:
             self.discord.delete_channel(game.channel)

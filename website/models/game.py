@@ -59,6 +59,7 @@ class Game(db.Model):
     restriction_tags = db.Column(db.String())
     party_size = db.Column(db.Integer(), nullable=False, default=4)
     party_selection = db.Column(db.Boolean(), nullable=False, default=False)
+    create_voice = db.Column(db.Boolean(), nullable=False, default=False)
     players = db.relationship("User", secondary=players_table, backref="games")
     xp = db.Column("experience", Enum(*GAME_XP, name="game_xp_enum"), default="all")
     date = db.Column(db.DateTime, nullable=False)
@@ -71,6 +72,7 @@ class Game(db.Model):
     img = db.Column(db.String())
     sessions = db.relationship("GameSession", backref="game")
     channel = db.Column(db.String())
+    voice_channel_id = db.Column(db.String())
     msg_id = db.Column(db.String())
     role = db.Column(db.String())
     status = db.Column(
