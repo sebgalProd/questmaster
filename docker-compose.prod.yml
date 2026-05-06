@@ -3,7 +3,6 @@ services:
     build:
       context: .
       target: app
-    image: questmaster:latest
     restart: unless-stopped
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:8000/health/" ]
