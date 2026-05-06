@@ -1,8 +1,5 @@
 """Channel model for Discord category tracking."""
 
-from sqlalchemy.dialects.postgresql import ENUM
-
-from config.constants import GAME_TYPES
 from website.extensions import db
 from website.models.base import SerializableMixin
 
@@ -22,9 +19,8 @@ class Channel(db.Model, SerializableMixin):
     _relationship_fields = []
 
     id = db.Column(db.String(), primary_key=True)
-    type = db.Column(ENUM(*GAME_TYPES, name="game_type_enum", create_type=False), nullable=False)
+    type = db.Column(db.String(), nullable=False)
     size = db.Column(db.Integer(), nullable=False, default=0)
-    voice = db.Column(db.Boolean(), nullable=False, default=False)
 
     @classmethod
     def from_dict(cls, data):

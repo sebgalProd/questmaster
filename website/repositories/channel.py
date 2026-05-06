@@ -18,23 +18,15 @@ class ChannelRepository(BaseRepository[Channel]):
         Returns:
             Channel with smallest size, or None if no match.
         """
-        return (
-            self.session.query(Channel)
-            .filter_by(type=type, voice=False)
-            .order_by(Channel.size)
-            .first()
-        )
+        return self.session.query(Channel).filter_by(type=type).order_by(Channel.size).first()
 
-    def get_voice_category(self, type: str) -> Channel | None:
-        """Find the voice category for a game type.
-
-        Args:
-            type: Game type (oneshot, campaign, videogame).
+    def get_voice_category(self) -> Channel | None:
+        """Find the voice category.
 
         Returns:
-            Voice Channel, or None if no match.
+            Voice Channel, or None if not configured.
         """
-        return self.session.query(Channel).filter_by(type=type, voice=True).first()
+        return self.session.query(Channel).filter_by(type="voice").first()
 
     def increment_size(self, channel: Channel) -> None:
         """Increment the channel count of a category.

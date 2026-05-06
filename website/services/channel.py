@@ -44,16 +44,13 @@ class ChannelService:
             )
         return category
 
-    def get_voice_category(self, game_type: str) -> Channel | None:
-        """Get the voice category for a game type, or None if not configured.
-
-        Args:
-            game_type: Type of game (oneshot, campaign, videogame).
+    def get_voice_category(self) -> Channel | None:
+        """Get the voice category, or None if not configured.
 
         Returns:
             Voice Channel category, or None if not configured.
         """
-        return self.repo.get_voice_category(game_type)
+        return self.repo.get_voice_category()
 
     def increment_size(self, channel: Channel) -> None:
         """Increment the channel count for a category.

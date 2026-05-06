@@ -292,7 +292,7 @@ class GameService:
         # Create voice channel if requested
         logger.info(f"create_voice flag for game {game.id}: {game.create_voice}")
         if game.create_voice:
-            voice_category = self.channel_service.get_voice_category(game.type)
+            voice_category = self.channel_service.get_voice_category()
             voice_parent_id = voice_category.id if voice_category else category.id
             game.voice_channel_id = self.discord.create_voice_channel(
                 name=game.slug.lower(),
