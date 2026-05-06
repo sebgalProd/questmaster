@@ -60,7 +60,11 @@ def _get_session_type(game) -> str:
     """Return session type display name."""
     if game.special_event:
         return f"Événement spécial : {game.special_event.name}"
-    return "Campagne" if game.type == "campaign" else "OS"
+    if game.type == "campaign":
+        return "Campagne"
+    if game.type == "videogame":
+        return "Jeu vidéo"
+    return "OS"
 
 
 def _build_embed_fields(game, session_type: str, restriction_msg: str) -> list:
