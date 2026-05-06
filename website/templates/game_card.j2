@@ -14,7 +14,7 @@
       background-color: var(--bs-dark);
       color: white;
     {% else %}
-      background-color: {% if game.type == 'campaign' %}var(--bs-primary){% else %}var(--bs-success){% endif %};
+      background-color: {% if game.type == 'campaign' %}var(--bs-primary){% elif game.type == 'videogame' %}var(--bs-secondary){% else %}var(--bs-success){% endif %};
       color: white;
     {% endif %}
   ">
@@ -31,7 +31,7 @@
     <div class="card-body">
       <div class="row">
         <div class="col-6">
-          <i class="bi bi-book"></i>&nbsp; {% if game.type=='campaign' %}Campagne{% else %}One Shot{% endif %}
+          {% if game.type=='campaign' %}<i class="bi bi-book"></i>&nbsp; Campagne{% elif game.type=='videogame' %}<i class="bi bi-controller"></i>&nbsp; Jeu vidéo{% else %}<i class="bi bi-dice-5"></i>&nbsp; One Shot{% endif %}
         </div>
         <div class="col-6 text-truncate">
           <i class="bi bi-joystick"></i>&nbsp; {{ game.system.name }}

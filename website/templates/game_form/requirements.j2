@@ -12,6 +12,10 @@
             %}{% if game.type=='campaign' %}checked{% else %}{% if game.status !="draft" and not clone %}disabled{%
             endif%}{%endif%}{% endif %}>
           <label class="btn btn-outline-primary btn-sm" for="campaign">Campagne</label>
+          <input type="radio" class="btn-check" name="type" value="videogame" id="videogame" autocomplete="off" {% if game
+            %}{% if game.type=='videogame' %}checked{% endif %} {% if game.status !="draft" and not clone %}disabled{%
+            endif%}{% endif %}>
+          <label class="btn btn-outline-secondary btn-sm" for="videogame">Jeu vidéo</label>
           {% if payload.active_events %}
           {% for event in payload.active_events %}
           {% set color = hex_color(event.color) %}
