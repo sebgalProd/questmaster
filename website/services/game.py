@@ -290,6 +290,7 @@ class GameService:
         self.channel_service.increment_size(category)
 
         # Create voice channel if requested
+        logger.info(f"create_voice flag for game {game.id}: {game.create_voice}")
         if game.create_voice:
             game.voice_channel_id = self.discord.create_voice_channel(
                 name=game.slug.lower(),
