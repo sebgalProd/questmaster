@@ -19,7 +19,7 @@ document.addEventListener("DOMContentLoaded", function () {
     timeZone: 'local',
     contentHeight: 'auto',
     events: function (fetchInfo, successCallback, failureCallback) {
-      fetch(`/api/calendar?start=${fetchInfo.startStr}&end=${fetchInfo.endStr}`)
+      fetch(`/api/calendar/?start=${fetchInfo.startStr}&end=${fetchInfo.endStr}`)
         .then(r => r.ok ? r.json() : Promise.reject("Network error"))
         .then(data => successCallback(data))
         .catch(err => failureCallback(err));
