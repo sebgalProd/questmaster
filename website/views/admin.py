@@ -35,7 +35,8 @@ class AdminView(ModelView):
 class ChannelAdmin(AdminView):
     form_columns = ["id", "type", "size", "voice"]
     column_list = ["id", "type", "size", "voice"]
-    column_editable_list = ["id", "type", "size", "voice"]
+    column_editable_list = ["size"]
+    form_extra_fields = {"id": fields.StringField("Discord Category ID")}
     can_create = True
     can_edit = True
 
