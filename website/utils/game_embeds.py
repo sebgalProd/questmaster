@@ -303,6 +303,35 @@ def build_register_embed(
     return embed, game.channel
 
 
+def build_attendance_alert_embed(
+    game,
+    start=None,
+    end=None,
+    player=None,
+    old_start=None,
+    old_end=None,
+    alert_message=None,
+) -> tuple[dict, str]:
+    """Build embed notifying the GM that a player will be absent.
+
+    Args:
+        game: Game instance.
+        start: Session start formatted string.
+        player: User ID of the absent player.
+
+    Returns:
+        Tuple of (embed dict, game channel ID).
+    """
+    embed = {
+        "title": "Absence signalée",
+        "color": EMBED_COLOR_YELLOW,
+        "description": (
+            f"<@{player}> ne sera pas présent·e pour la session du **{start}**."
+        ),
+    }
+    return embed, game.channel
+
+
 def build_alert_embed(
     game,
     start=None,

@@ -345,6 +345,7 @@ class DiscordService:
             build_alert_embed,
             build_annonce_details_embed,
             build_annonce_embed,
+            build_attendance_alert_embed,
             build_delete_session_embed,
             build_edit_session_embed,
             build_register_embed,
@@ -358,6 +359,7 @@ class DiscordService:
             "del-session": build_delete_session_embed,
             "register": build_register_embed,
             "alert": build_alert_embed,
+            "attendance-alert": build_attendance_alert_embed,
         }
 
         if embed_type not in embed_builders:

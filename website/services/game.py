@@ -794,6 +794,11 @@ class GameService:
 
         game.players.remove(user)
 
+        # Delete all attendance records for this user across all sessions of this game
+        from website.repositories.session_attendance import SessionAttendanceRepository
+
+        SessionAttendanceRepository().delete_by_game_and_user(game.id, user.id)
+
         # Reopen if it was full
         if (
             game.status == "closed"

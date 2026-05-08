@@ -386,6 +386,30 @@ class TestGameService:
         # Game should reopen when below capacity
         assert game.status == "open"
 
+    def test_unregister_player_deletes_attendance(
+        self, db_session, sample_game, game_service, mock_discord, regular_user, oneshot_channel
+    ):
+        from datetime import timedelta
+
+        from website.repositories.session_attendance import SessionAttendanceRepository
+        from website.services.game_session import GameSessionService
+
+        session_svc = GameSessionService(discord_service=mock_discord)
+        sample_game.players.append(regular_user)
+        db_session.commit()
+
+        session = session_svc.create(
+            sample_game,
+            sample_game.date,
+            sample_game.date + timedelta(hours=3),
+        )
+        session_svc.set_attendance(session, regular_user.id, True)
+
+        game_service.unregister_player(sample_game.slug, regular_user.id)
+
+        repo = SessionAttendanceRepository()
+        assert repo.find_by_session_and_user(session.id, regular_user.id) is None
+
     def test_clone_game(self, db_session, sample_game, game_service):
         game_data = game_service.clone(sample_game.slug)
 
