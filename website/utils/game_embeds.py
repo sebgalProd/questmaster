@@ -173,7 +173,7 @@ def build_annonce_details_embed(
             f"<@{game.gm_id}> voici le salon pour ta partie {game.name} et voici le lien [vers l'annonce]({game_url}).\n"
             f"Le rôle associé est <@&{game.role}>.\n\n"
             f"Quelques petits rappels :\n"
-            f"- La partie doit être **organisée et jouée sur le serveur du Club JDR** (Cf. règlement).\n"
+            f"- La partie doit être **organisée et jouée sur le serveur du {current_app.config['DISCORD_GUILD_NAME']}** (Cf. règlement).\n"
             f"- Notifie tes joueur·euses **uniquement avec le rôle @PJ** mentionné plus haut, et non pas `@everyone`, `@here` ou `@Joueur·euses`.\n"
             f"- Toutes les sessions **jouées** doivent être ajoutées dans QuestMaster au fur et à mesure.\n"
             f"- Le bouton **Signaler** sur QuestMaster te permet de contacter les admins en cas de problème concernant la partie."
