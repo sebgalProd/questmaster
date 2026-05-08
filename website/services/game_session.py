@@ -34,30 +34,52 @@ class GameSessionService:
     def __init__(self, repository=None):
         self.repo = repository or GameSessionRepository()
 
-    def create(self, game: Game, start: datetime, end: datetime) -> GameSession:
+    def create(
+        self,
+        game: Game,
+        start: datetime,
+        end: datetime,
+        location_type: str | None = None,
+        location_label: str | None = None,
+        location_url: str | None = None,
+    ) -> GameSession:
         """Create a new game session.
 
         Args:
             game: Game instance to add the session to.
             start: Session start datetime.
             end: Session end datetime.
+            location_type: 'online' or 'inperson', or None.
+            location_label: Required when location_type is set.
+            location_url: Optional URL.
 
         Returns:
             Created GameSession instance.
 
         Raises:
-            ValidationError: If start >= end.
+            ValidationError: If start >= end or location_type set without label.
             SessionConflictError: If the session overlaps with an existing one.
         """
         if start >= end:
             raise ValidationError("Session start must be before end time.")
+
+        if location_type and not location_label:
+            raise ValidationError(
+                "Le lieu doit avoir un nom.", field="location_label"
+            )
 
         if self._has_conflict(game, start, end):
             raise SessionConflictError(
                 "Session overlaps with an existing session.", game_id=game.id
             )
 
-        session = GameSession(start=start, end=end)
+        session = GameSession(
+            start=start,
+            end=end,
+            location_type=location_type,
+            location_label=location_label,
+            location_url=location_url,
+        )
         self.repo.add(session)
         game.sessions.append(session)
         db.session.commit()
@@ -77,23 +99,39 @@ class GameSessionService:
         db.session.commit()
         logger.info(f"Session removed for game {game_id} from {start} to {end}")
 
-    def update(self, session: GameSession, new_start: datetime, new_end: datetime) -> GameSession:
-        """Update a session's start/end times.
+    def update(
+        self,
+        session: GameSession,
+        new_start: datetime,
+        new_end: datetime,
+        location_type: str | None = None,
+        location_label: str | None = None,
+        location_url: str | None = None,
+    ) -> GameSession:
+        """Update a session's start/end times and optional location.
 
         Args:
             session: Existing GameSession instance.
             new_start: New start datetime.
             new_end: New end datetime.
+            location_type: 'online' or 'inperson', or None to clear.
+            location_label: Required when location_type is set.
+            location_url: Optional URL.
 
         Returns:
             Updated GameSession instance.
 
         Raises:
-            ValidationError: If new_start >= new_end.
+            ValidationError: If new_start >= new_end or location_type set without label.
             SessionConflictError: If new times overlap another session.
         """
         if new_start >= new_end:
             raise ValidationError("Session start must be before end time.")
+
+        if location_type and not location_label:
+            raise ValidationError(
+                "Le lieu doit avoir un nom.", field="location_label"
+            )
 
         game = session.game
         if self._has_conflict(game, new_start, new_end, exclude_session_id=session.id):
@@ -103,6 +141,9 @@ class GameSessionService:
 
         session.start = new_start
         session.end = new_end
+        session.location_type = location_type
+        session.location_label = location_label
+        session.location_url = location_url
         db.session.commit()
         logger.info(f"Session {session.id} updated to {new_start} - {new_end}")
         return session

@@ -131,3 +131,39 @@ class TestGameSessionService:
         assert stats["base_day"].day == 1
         assert stats["num_os"] == 0
         assert stats["num_campaign"] == 0
+
+    def test_create_with_valid_location(self, db_session, sample_game):
+        service = GameSessionService()
+        start = datetime(2025, 12, 1, 20, 0)
+        end = datetime(2025, 12, 1, 23, 0)
+        session = service.create(
+            sample_game, start, end,
+            location_type="online", location_label="Discord"
+        )
+        assert session.location_type == "online"
+        assert session.location_label == "Discord"
+        assert session.location_url is None
+
+    def test_create_location_type_without_label_raises(self, db_session, sample_game):
+        service = GameSessionService()
+        start = datetime(2025, 12, 2, 20, 0)
+        end = datetime(2025, 12, 2, 23, 0)
+        with pytest.raises(ValidationError):
+            service.create(sample_game, start, end, location_type="online", location_label="")
+
+    def test_update_location(self, db_session, sample_game):
+        service = GameSessionService()
+        session = service.create(
+            sample_game, datetime(2025, 12, 3, 20, 0), datetime(2025, 12, 3, 23, 0)
+        )
+        updated = service.update(
+            session,
+            datetime(2025, 12, 3, 20, 0),
+            datetime(2025, 12, 3, 23, 0),
+            location_type="inperson",
+            location_label="Salle B12",
+            location_url="https://maps.google.com/test",
+        )
+        assert updated.location_type == "inperson"
+        assert updated.location_label == "Salle B12"
+        assert updated.location_url == "https://maps.google.com/test"
