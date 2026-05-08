@@ -76,9 +76,7 @@ class SessionAttendanceRepository(BaseRepository[SessionAttendance]):
             game_id: Game primary key.
             user_id: User primary key.
         """
-        session_ids = (
-            self.session.query(GameSession.id).filter_by(game_id=game_id).scalar_subquery()
-        )
+        session_ids = self.session.query(GameSession.id).filter_by(game_id=game_id)
         self.session.query(SessionAttendance).filter(
             SessionAttendance.session_id.in_(session_ids),
             SessionAttendance.user_id == user_id,
