@@ -32,8 +32,22 @@ class GameSessionService:
     Handles session creation, deletion, updates, and conflict detection.
     """
 
-    def __init__(self, repository=None):
+    def __init__(self, repository=None, discord_service=None):
         self.repo = repository or GameSessionRepository()
+        self._discord_service = discord_service
+
+    @property
+    def discord_service(self):
+        """Lazy-init DiscordService to avoid circular imports.
+
+        Returns:
+            DiscordService instance.
+        """
+        if self._discord_service is None:
+            from website.services.discord import DiscordService
+
+            self._discord_service = DiscordService()
+        return self._discord_service
 
     def create(
         self,
@@ -263,6 +277,72 @@ class GameSessionService:
             "gm_names": gm_names,
         }
 
+
+    def set_attendance(
+        self,
+        session: GameSession,
+        user_id: str,
+        is_present: bool,
+        by_gm: bool = False,
+    ) -> None:
+        """Set or toggle a player's attendance for a session.
+
+        Args:
+            session: GameSession instance.
+            user_id: ID of the player.
+            is_present: True = present, False = absent.
+            by_gm: If True, suppress Discord notification.
+
+        Raises:
+            ValidationError: If user is not registered in the game.
+        """
+        from config.constants import HUMAN_TIMEFORMAT
+        from website.repositories.session_attendance import SessionAttendanceRepository
+
+        registered_ids = [p.id for p in session.game.players]
+        if user_id not in registered_ids:
+            raise ValidationError(
+                "User is not registered for this game.", field="user_id"
+            )
+
+        repo = SessionAttendanceRepository()
+        existing = repo.find_by_session_and_user(session.id, user_id)
+
+        if existing and existing.is_present == is_present:
+            repo.delete(existing)
+            db.session.commit()
+            return
+
+        repo.upsert(session.id, user_id, is_present)
+        db.session.commit()
+
+        if not is_present and not by_gm:
+            self.discord_service.send_game_embed(
+                session.game,
+                embed_type="attendance-alert",
+                player=user_id,
+                start=session.start.strftime(HUMAN_TIMEFORMAT),
+                end=session.end.strftime(HUMAN_TIMEFORMAT),
+            )
+
+    def get_attendance_summary(self, session: GameSession) -> dict:
+        """Return attendance status for all registered players.
+
+        Args:
+            session: GameSession instance.
+
+        Returns:
+            Dict mapping user_id to True (present), False (absent), or None (no response).
+        """
+        from website.repositories.session_attendance import SessionAttendanceRepository
+
+        repo = SessionAttendanceRepository()
+        records = repo.find_by_session(session.id)
+        attendance_map = {r.user_id: r.is_present for r in records}
+        return {
+            player.id: attendance_map.get(player.id, None)
+            for player in session.game.players
+        }
 
     @staticmethod
     def _has_conflict(game, start_dt, end_dt, exclude_session_id=None):

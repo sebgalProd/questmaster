@@ -211,3 +211,99 @@ class TestGameSessionService:
         assert updated.location_type is None
         assert updated.location_label is None
         assert updated.location_url is None
+
+
+class TestSessionAttendanceService:
+    @pytest.fixture
+    def session_svc(self, mock_discord):
+        from website.services.game_session import GameSessionService
+        return GameSessionService(discord_service=mock_discord)
+
+    def test_set_attendance_absent_triggers_discord(
+        self, db_session, sample_game, session_svc, mock_discord, admin_user
+    ):
+        from datetime import timedelta
+        session = session_svc.create(
+            sample_game,
+            sample_game.date,
+            sample_game.date + timedelta(hours=3),
+        )
+        sample_game.players.append(admin_user)
+        db_session.commit()
+        session_svc.set_attendance(session, admin_user.id, False, by_gm=False)
+        mock_discord.send_game_embed.assert_called_once()
+        call_kwargs = mock_discord.send_game_embed.call_args[1]
+        assert call_kwargs["embed_type"] == "attendance-alert"
+
+    def test_set_attendance_present_no_discord(
+        self, db_session, sample_game, session_svc, mock_discord, admin_user
+    ):
+        from datetime import timedelta
+        session = session_svc.create(
+            sample_game,
+            sample_game.date,
+            sample_game.date + timedelta(hours=3),
+        )
+        sample_game.players.append(admin_user)
+        db_session.commit()
+        session_svc.set_attendance(session, admin_user.id, True, by_gm=False)
+        mock_discord.send_game_embed.assert_not_called()
+
+    def test_set_attendance_by_gm_no_discord(
+        self, db_session, sample_game, session_svc, mock_discord, admin_user
+    ):
+        from datetime import timedelta
+        session = session_svc.create(
+            sample_game,
+            sample_game.date,
+            sample_game.date + timedelta(hours=3),
+        )
+        sample_game.players.append(admin_user)
+        db_session.commit()
+        session_svc.set_attendance(session, admin_user.id, False, by_gm=True)
+        mock_discord.send_game_embed.assert_not_called()
+
+    def test_set_attendance_toggle_resets_to_no_response(
+        self, db_session, sample_game, session_svc, mock_discord, admin_user
+    ):
+        from datetime import timedelta
+        from website.repositories.session_attendance import SessionAttendanceRepository
+        session = session_svc.create(
+            sample_game,
+            sample_game.date,
+            sample_game.date + timedelta(hours=3),
+        )
+        sample_game.players.append(admin_user)
+        db_session.commit()
+        session_svc.set_attendance(session, admin_user.id, True)
+        session_svc.set_attendance(session, admin_user.id, True)  # toggle off
+        repo = SessionAttendanceRepository()
+        assert repo.find_by_session_and_user(session.id, admin_user.id) is None
+
+    def test_set_attendance_unregistered_player_raises(
+        self, db_session, sample_game, session_svc, admin_user
+    ):
+        from datetime import timedelta
+        session = session_svc.create(
+            sample_game,
+            sample_game.date,
+            sample_game.date + timedelta(hours=3),
+        )
+        with pytest.raises(ValidationError):
+            session_svc.set_attendance(session, admin_user.id, True)
+
+    def test_get_attendance_summary(
+        self, db_session, sample_game, session_svc, admin_user, regular_user
+    ):
+        from datetime import timedelta
+        session = session_svc.create(
+            sample_game,
+            sample_game.date,
+            sample_game.date + timedelta(hours=3),
+        )
+        sample_game.players.extend([admin_user, regular_user])
+        db_session.commit()
+        session_svc.set_attendance(session, admin_user.id, True)
+        summary = session_svc.get_attendance_summary(session)
+        assert summary[admin_user.id] is True
+        assert summary[regular_user.id] is None
