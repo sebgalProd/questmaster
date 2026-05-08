@@ -1,0 +1,94 @@
+{# session_attendance.j2 — attendance display for a single session card
+   Variables available: session, game, payload, is_player, attendance_data, now (datetime function) #}
+
+{% set data = attendance_data[session.id] %}
+{% set summary = data.summary %}
+{% set current_time = now() %}
+{% set is_future = session.end > current_time %}
+
+{# Location badge #}
+{% if session.location_type %}
+<div class="mt-2">
+  {% if session.location_type == 'online' %}
+  <span class="badge bg-primary">En ligne</span>
+  {% else %}
+  <span class="badge bg-warning text-dark">Présentiel</span>
+  {% endif %}
+  {% if session.location_label %}
+  <span class="ms-1 small">{{ session.location_label }}</span>
+  {% endif %}
+  {% if session.location_url %}
+  <a href="{{ session.location_url }}" target="_blank" class="ms-1 small">
+    <i class="bi bi-geo-alt"></i> Carte
+  </a>
+  {% endif %}
+</div>
+{% endif %}
+
+{# Player presence buttons (only for registered players, future sessions) #}
+{% if is_player %}
+{% set my_status = summary.get(payload['user_id']) %}
+{% if is_future %}
+<div class="mt-2 d-flex gap-2 justify-content-center">
+  <form method="post"
+    action="/annonces/{{ game.slug }}/sessions/{{ session.id }}/presence/">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="is_present" value="1">
+    <button type="submit"
+      class="btn btn-sm {% if my_status == true %}btn-success{% else %}btn-outline-success{% endif %}">
+      ✓ Présent·e
+    </button>
+  </form>
+  <form method="post"
+    action="/annonces/{{ game.slug }}/sessions/{{ session.id }}/presence/">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="is_present" value="0">
+    <button type="submit"
+      class="btn btn-sm {% if my_status == false %}btn-danger{% else %}btn-outline-danger{% endif %}">
+      ✗ Absent·e
+    </button>
+  </form>
+</div>
+{% endif %}
+{% endif %}
+
+{# Attendance summary (all players + GM) #}
+{% if summary %}
+<div class="mt-2 small text-muted text-center">
+  ✓ {{ data.present }} présent·es · ✗ {{ data.absent }} absent·es · — {{ data.no_reply }} sans réponse
+</div>
+{% endif %}
+
+{# GM per-player toggle list #}
+{% if (payload['user_id'] == game.gm_id or payload['is_admin']) and summary %}
+<div class="mt-2">
+  <div class="list-group list-group-flush">
+    {% for player in game.players %}
+    {% set status = summary.get(player.id) %}
+    <div class="list-group-item px-0 py-1 d-flex justify-content-between align-items-center">
+      <span class="small">{{ player.name }}</span>
+      <div class="d-flex gap-1">
+        <form method="post"
+          action="/annonces/{{ game.slug }}/sessions/{{ session.id }}/presence/{{ player.id }}/">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="is_present" value="1">
+          <button type="submit"
+            class="btn btn-sm {% if status == true %}btn-success{% else %}btn-outline-success{% endif %} py-0 px-2">
+            ✓
+          </button>
+        </form>
+        <form method="post"
+          action="/annonces/{{ game.slug }}/sessions/{{ session.id }}/presence/{{ player.id }}/">
+          <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+          <input type="hidden" name="is_present" value="0">
+          <button type="submit"
+            class="btn btn-sm {% if status == false %}btn-danger{% else %}btn-outline-danger{% endif %} py-0 px-2">
+            ✗
+          </button>
+        </form>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+{% endif %}
