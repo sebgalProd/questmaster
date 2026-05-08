@@ -84,6 +84,7 @@ def mock_discord_service():
     with (
         patch("website.views.games.game_service.discord", mock),
         patch("website.views.games.discord_service", mock),
+        patch("website.views.games.session_service._discord_service", mock),
     ):
         yield mock
 

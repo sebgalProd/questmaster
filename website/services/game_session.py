@@ -7,6 +7,7 @@ from collections import defaultdict
 from datetime import datetime
 from typing import TYPE_CHECKING
 
+from config.constants import SESSION_LOCATION_TYPES
 from website.exceptions import SessionConflictError, ValidationError
 from website.extensions import cache, db
 from website.models import GameSession
@@ -31,33 +32,78 @@ class GameSessionService:
     Handles session creation, deletion, updates, and conflict detection.
     """
 
-    def __init__(self, repository=None):
+    def __init__(self, repository=None, discord_service=None):
         self.repo = repository or GameSessionRepository()
+        self._discord_service = discord_service
 
-    def create(self, game: Game, start: datetime, end: datetime) -> GameSession:
+    @property
+    def discord_service(self):
+        """Lazy-init DiscordService to avoid circular imports.
+
+        Returns:
+            DiscordService instance.
+        """
+        if self._discord_service is None:
+            from website.services.discord import DiscordService
+
+            self._discord_service = DiscordService()
+        return self._discord_service
+
+    def create(
+        self,
+        game: Game,
+        start: datetime,
+        end: datetime,
+        location_type: str | None = None,
+        location_label: str | None = None,
+        location_url: str | None = None,
+    ) -> GameSession:
         """Create a new game session.
 
         Args:
             game: Game instance to add the session to.
             start: Session start datetime.
             end: Session end datetime.
+            location_type: 'online' or 'inperson', or None.
+            location_label: Required when location_type is set.
+            location_url: Optional URL.
 
         Returns:
             Created GameSession instance.
 
         Raises:
-            ValidationError: If start >= end.
+            ValidationError: If start >= end or location_type set without label.
             SessionConflictError: If the session overlaps with an existing one.
         """
         if start >= end:
             raise ValidationError("Session start must be before end time.")
+
+        if location_type and location_type not in SESSION_LOCATION_TYPES:
+            raise ValidationError(
+                f"Type de lieu invalide : '{location_type}'.", field="location_type"
+            )
+
+        if location_type and not location_label:
+            raise ValidationError(
+                "Le lieu doit avoir un nom.", field="location_label"
+            )
+
+        if not location_type:
+            location_label = None
+            location_url = None
 
         if self._has_conflict(game, start, end):
             raise SessionConflictError(
                 "Session overlaps with an existing session.", game_id=game.id
             )
 
-        session = GameSession(start=start, end=end)
+        session = GameSession(
+            start=start,
+            end=end,
+            location_type=location_type,
+            location_label=location_label,
+            location_url=location_url,
+        )
         self.repo.add(session)
         game.sessions.append(session)
         db.session.commit()
@@ -77,23 +123,48 @@ class GameSessionService:
         db.session.commit()
         logger.info(f"Session removed for game {game_id} from {start} to {end}")
 
-    def update(self, session: GameSession, new_start: datetime, new_end: datetime) -> GameSession:
-        """Update a session's start/end times.
+    def update(
+        self,
+        session: GameSession,
+        new_start: datetime,
+        new_end: datetime,
+        location_type: str | None = None,
+        location_label: str | None = None,
+        location_url: str | None = None,
+    ) -> GameSession:
+        """Update a session's start/end times and optional location.
 
         Args:
             session: Existing GameSession instance.
             new_start: New start datetime.
             new_end: New end datetime.
+            location_type: 'online' or 'inperson', or None to clear.
+            location_label: Required when location_type is set.
+            location_url: Optional URL.
 
         Returns:
             Updated GameSession instance.
 
         Raises:
-            ValidationError: If new_start >= new_end.
+            ValidationError: If new_start >= new_end or location_type set without label.
             SessionConflictError: If new times overlap another session.
         """
         if new_start >= new_end:
             raise ValidationError("Session start must be before end time.")
+
+        if location_type and location_type not in SESSION_LOCATION_TYPES:
+            raise ValidationError(
+                f"Type de lieu invalide : '{location_type}'.", field="location_type"
+            )
+
+        if location_type and not location_label:
+            raise ValidationError(
+                "Le lieu doit avoir un nom.", field="location_label"
+            )
+
+        if not location_type:
+            location_label = None
+            location_url = None
 
         game = session.game
         if self._has_conflict(game, new_start, new_end, exclude_session_id=session.id):
@@ -103,6 +174,9 @@ class GameSessionService:
 
         session.start = new_start
         session.end = new_end
+        session.location_type = location_type
+        session.location_label = location_label
+        session.location_url = location_url
         db.session.commit()
         logger.info(f"Session {session.id} updated to {new_start} - {new_end}")
         return session
@@ -203,6 +277,72 @@ class GameSessionService:
             "gm_names": gm_names,
         }
 
+
+    def set_attendance(
+        self,
+        session: GameSession,
+        user_id: str,
+        is_present: bool,
+        by_gm: bool = False,
+    ) -> None:
+        """Set or toggle a player's attendance for a session.
+
+        Args:
+            session: GameSession instance.
+            user_id: ID of the player.
+            is_present: True = present, False = absent.
+            by_gm: If True, suppress Discord notification.
+
+        Raises:
+            ValidationError: If user is not registered in the game.
+        """
+        from config.constants import HUMAN_TIMEFORMAT
+        from website.repositories.session_attendance import SessionAttendanceRepository
+
+        registered_ids = [p.id for p in session.game.players]
+        if user_id not in registered_ids:
+            raise ValidationError(
+                "User is not registered for this game.", field="user_id"
+            )
+
+        repo = SessionAttendanceRepository()
+        existing = repo.find_by_session_and_user(session.id, user_id)
+
+        if existing and existing.is_present == is_present:
+            repo.delete(existing)
+            db.session.commit()
+            return
+
+        repo.upsert(session.id, user_id, is_present)
+        db.session.commit()
+
+        if not is_present and not by_gm:
+            self.discord_service.send_game_embed(
+                session.game,
+                embed_type="attendance-alert",
+                player=user_id,
+                start=session.start.strftime(HUMAN_TIMEFORMAT),
+                end=session.end.strftime(HUMAN_TIMEFORMAT),
+            )
+
+    def get_attendance_summary(self, session: GameSession) -> dict:
+        """Return attendance status for all registered players.
+
+        Args:
+            session: GameSession instance.
+
+        Returns:
+            Dict mapping user_id to True (present), False (absent), or None (no response).
+        """
+        from website.repositories.session_attendance import SessionAttendanceRepository
+
+        repo = SessionAttendanceRepository()
+        records = repo.find_by_session(session.id)
+        attendance_map = {r.user_id: r.is_present for r in records}
+        return {
+            player.id: attendance_map.get(player.id, None)
+            for player in session.game.players
+        }
 
     @staticmethod
     def _has_conflict(game, start_dt, end_dt, exclude_session_id=None):

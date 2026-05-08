@@ -74,6 +74,13 @@ def create_app():
         """Inject application version into template context."""
         return {"app_version": get_app_version()}
 
+    @app.context_processor
+    def inject_now():
+        """Inject current UTC datetime function into template context."""
+        from datetime import datetime
+
+        return {"now": datetime.utcnow}
+
     # Extensions
     db.init_app(app)
     migrate.init_app(app, db)

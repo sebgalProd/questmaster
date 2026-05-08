@@ -43,3 +43,4 @@ test-results
 clubjdr.sql
 /questmaster.egg-info/*
 .env.prod
+.superpowers/

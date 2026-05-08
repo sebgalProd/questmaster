@@ -98,7 +98,7 @@ def demo_general():
 @demo_bp.route("/demo/inscription/")
 def demo_register():
     """Render the demo registration page."""
-    return render_template("game_details.j2", game=fake_games[0], is_player=False)
+    return render_template("game_details.j2", game=fake_games[0], is_player=False, attendance_data={})
 
 
 @demo_bp.route("/demo/poster/")
@@ -110,4 +110,4 @@ def demo_post():
 @demo_bp.route("/demo/gerer/")
 def demo_manage():
     """Render the demo game management page."""
-    return render_template("game_details.j2", game=fake_games[0], is_player=False)
+    return render_template("game_details.j2", game=fake_games[0], is_player=False, attendance_data={})

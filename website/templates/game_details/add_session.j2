@@ -18,11 +18,47 @@
               <input name="date_end" id="date_end" class="flatpickr flatpickr-end flatpickr-input active form-control"
                 type="text" autocomplete="off" onchange="validateDateRange('#date_start', '#date_end', 'add_session')"
                 required>
-              <button id="add_session" type="submit" class="btn btn-primary" disabled>Ajouter</button>
             </div>
+          </div>
+          <div class="mb-3">
+            <label for="add_location_type" class="form-label">Lieu</label>
+            <select class="form-select" id="add_location_type" name="location_type"
+              onchange="toggleLocationFields('add')">
+              <option value="">Non renseigné</option>
+              <option value="online">En ligne</option>
+              <option value="inperson">Présentiel</option>
+            </select>
+          </div>
+          <div id="add_location_label_group" class="mb-3" style="display:none;">
+            <label for="add_location_label" class="form-label">Nom du lieu <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="add_location_label" name="location_label"
+              placeholder="Ex : Discord, Salle B12...">
+          </div>
+          <div id="add_location_url_group" class="mb-3" style="display:none;">
+            <label for="add_location_url" class="form-label">Lien Google Maps (optionnel)</label>
+            <input type="url" class="form-control" id="add_location_url" name="location_url"
+              placeholder="https://maps.google.com/...">
+          </div>
+          <div class="d-grid">
+            <button id="add_session" type="submit" class="btn btn-primary" disabled>Ajouter</button>
           </div>
         </form>
       </div>
     </div>
   </div>
 </div>
+
+<script>
+function toggleLocationFields(prefix) {
+  const type = document.getElementById(prefix + '_location_type').value;
+  const labelGroup = document.getElementById(prefix + '_location_label_group');
+  const urlGroup = document.getElementById(prefix + '_location_url_group');
+  labelGroup.style.display = type ? 'block' : 'none';
+  urlGroup.style.display = (type === 'inperson') ? 'block' : 'none';
+  if (!type) {
+    document.getElementById(prefix + '_location_label').value = '';
+    const urlEl = document.getElementById(prefix + '_location_url');
+    if (urlEl) urlEl.value = '';
+  }
+}
+</script>

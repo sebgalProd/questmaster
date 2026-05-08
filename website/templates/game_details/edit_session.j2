@@ -23,11 +23,47 @@
                 value="{{session.end}}"
                 onchange="validateDateRange('#date_start_{{session.id}}', '#date_end_{{session.id}}', 'edit_session_{{session.id}}')"
                 required>
-              <button id="edit_session_{{session.id}}" type="submit" class="btn btn-primary" disabled>Modifier</button>
             </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Lieu</label>
+            <select class="form-select" id="edit_location_type_{{session.id}}" name="location_type"
+              onchange="toggleEditLocation({{ session.id }})">
+              <option value="" {% if not session.location_type %}selected{% endif %}>Non renseigné</option>
+              <option value="online" {% if session.location_type == 'online' %}selected{% endif %}>En ligne</option>
+              <option value="inperson" {% if session.location_type == 'inperson' %}selected{% endif %}>Présentiel</option>
+            </select>
+          </div>
+          <div id="edit_{{session.id}}_location_label_group" class="mb-3"
+            style="display:{% if session.location_type %}block{% else %}none{% endif %};">
+            <label class="form-label">Nom du lieu <span class="text-danger">*</span></label>
+            <input type="text" class="form-control" id="edit_{{session.id}}_location_label" name="location_label"
+              value="{{ session.location_label or '' }}" placeholder="Ex : Discord, Salle B12...">
+          </div>
+          <div id="edit_{{session.id}}_location_url_group" class="mb-3"
+            style="display:{% if session.location_type == 'inperson' %}block{% else %}none{% endif %};">
+            <label class="form-label">Lien Google Maps (optionnel)</label>
+            <input type="url" class="form-control" id="edit_{{session.id}}_location_url" name="location_url"
+              value="{{ session.location_url or '' }}" placeholder="https://maps.google.com/...">
+          </div>
+          <div class="d-grid">
+            <button id="edit_session_{{session.id}}" type="submit" class="btn btn-primary" disabled>Modifier</button>
           </div>
         </form>
       </div>
     </div>
   </div>
 </div>
+
+<script>
+function toggleEditLocation(sid) {
+  const type = document.getElementById('edit_location_type_' + sid).value;
+  document.getElementById('edit_' + sid + '_location_label_group').style.display = type ? 'block' : 'none';
+  document.getElementById('edit_' + sid + '_location_url_group').style.display = (type === 'inperson') ? 'block' : 'none';
+  if (!type) {
+    document.getElementById('edit_' + sid + '_location_label').value = '';
+    const urlEl = document.getElementById('edit_' + sid + '_location_url');
+    if (urlEl) urlEl.value = '';
+  }
+}
+</script>

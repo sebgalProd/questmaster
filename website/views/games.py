@@ -43,8 +43,8 @@ locale.setlocale(locale.LC_TIME, "fr_FR.UTF-8")
 
 # Service instances
 game_service = GameService()
-session_service = GameSessionService()
 discord_service = DiscordService()
+session_service = GameSessionService(discord_service=discord_service)
 special_event_service = SpecialEventService()
 system_service = SystemService()
 vtt_service = VttService()
@@ -148,7 +148,21 @@ def get_game_details(slug):
     payload = who()
     game = game_service.get_by_slug_or_404(slug)
     is_player = "user_id" in payload and game_service.is_player(game, payload["user_id"])
-    return render_template("game_details.j2", game=game, is_player=is_player)
+    attendance_data = {}
+    for session in game.sessions:
+        summary = session_service.get_attendance_summary(session)
+        attendance_data[session.id] = {
+            "summary": summary,
+            "present": sum(1 for v in summary.values() if v is True),
+            "absent": sum(1 for v in summary.values() if v is False),
+            "no_reply": sum(1 for v in summary.values() if v is None),
+        }
+    return render_template(
+        "game_details.j2",
+        game=game,
+        is_player=is_player,
+        attendance_data=attendance_data,
+    )
 
 
 @game_bp.route("/annonce/", methods=["GET"])
@@ -296,9 +310,19 @@ def add_game_session(slug):
     game = _get_game_if_authorized(payload, slug)
     start = datetime.strptime(request.values.get("date_start"), DEFAULT_TIMEFORMAT)
     end = datetime.strptime(request.values.get("date_end"), DEFAULT_TIMEFORMAT)
+    location_type = request.values.get("location_type") or None
+    location_label = (request.values.get("location_label") or "").strip() or None
+    location_url = (request.values.get("location_url") or "").strip() or None
 
     try:
-        session_service.create(game, start, end)
+        session_service.create(
+            game,
+            start,
+            end,
+            location_type=location_type,
+            location_label=location_label,
+            location_url=location_url,
+        )
         log_game_event(
             "create-session",
             game.id,
@@ -308,11 +332,8 @@ def add_game_session(slug):
         logger.info(f"Session {start}/{end} created for Game {game.id}")
         discord_service.send_game_embed(game, embed_type="add-session", start=start, end=end)
         flash("Session ajoutée.", "success")
-    except ValidationError:
-        flash(
-            "Impossible d'ajouter une session qui se termine avant de commencer.",
-            "danger",
-        )
+    except ValidationError as e:
+        flash(e.message, "danger")
     except SessionConflictError as e:
         flash(str(e), "danger")
     except QuestMasterError:
@@ -332,12 +353,22 @@ def edit_game_session(slug, session_id):
 
     new_start = datetime.strptime(request.values.get("date_start"), DEFAULT_TIMEFORMAT)
     new_end = datetime.strptime(request.values.get("date_end"), DEFAULT_TIMEFORMAT)
+    location_type = request.values.get("location_type") or None
+    location_label = (request.values.get("location_label") or "").strip() or None
+    location_url = (request.values.get("location_url") or "").strip() or None
 
     old_start = session.start.strftime(HUMAN_TIMEFORMAT)
     old_end = session.end.strftime(HUMAN_TIMEFORMAT)
 
     try:
-        session_service.update(session, new_start, new_end)
+        session_service.update(
+            session,
+            new_start,
+            new_end,
+            location_type=location_type,
+            location_label=location_label,
+            location_url=location_url,
+        )
         log_game_event(
             "edit-session",
             game.id,
@@ -400,6 +431,65 @@ def remove_game_session(slug, session_id):
     except QuestMasterError:
         logger.exception("Failed to delete game session")
         flash("Erreur lors de la suppression de la session.", "danger")
+    return redirect(url_for(GAME_DETAILS_ROUTE, slug=slug))
+
+
+@game_bp.route("/annonces/<slug>/sessions/<int:session_id>/presence/", methods=["POST"])
+@login_required
+def set_session_presence(slug, session_id):
+    """Player marks their own attendance for a session."""
+    payload = who()
+    game = game_service.get_by_slug_or_404(slug)
+    session = session_service.get_by_id_or_404(session_id)
+
+    if session.game_id != game.id:
+        flash("Session introuvable pour cette annonce.", "danger")
+        return redirect(url_for(GAME_DETAILS_ROUTE, slug=slug))
+
+    if session.end < datetime.utcnow():
+        flash("Impossible de modifier la présence d'une session passée.", "danger")
+        return redirect(url_for(GAME_DETAILS_ROUTE, slug=slug))
+
+    is_present = bool(int(request.values.get("is_present", 0)))
+
+    try:
+        session_service.set_attendance(session, payload["user_id"], is_present, by_gm=False)
+        flash("Présence mise à jour.", "success")
+    except ValidationError as e:
+        flash(e.message, "danger")
+    except QuestMasterError:
+        logger.exception("Failed to set attendance")
+        flash("Une erreur est survenue.", "danger")
+
+    return redirect(url_for(GAME_DETAILS_ROUTE, slug=slug))
+
+
+@game_bp.route(
+    "/annonces/<slug>/sessions/<int:session_id>/presence/<user_id>/",
+    methods=["POST"],
+)
+@login_required
+def set_session_presence_gm(slug, session_id, user_id):
+    """GM marks attendance for a specific player."""
+    payload = who()
+    game = game_service.get_by_slug_or_404(slug)
+
+    if payload["user_id"] != game.gm_id and not payload.get("is_admin"):
+        flash("Action non autorisée.", "danger")
+        return redirect(url_for(GAME_DETAILS_ROUTE, slug=slug))
+
+    session = session_service.get_by_id_or_404(session_id)
+    is_present = bool(int(request.values.get("is_present", 0)))
+
+    try:
+        session_service.set_attendance(session, user_id, is_present, by_gm=True)
+        flash("Présence mise à jour.", "success")
+    except ValidationError as e:
+        flash(e.message, "danger")
+    except QuestMasterError:
+        logger.exception("Failed to set attendance for player")
+        flash("Une erreur est survenue.", "danger")
+
     return redirect(url_for(GAME_DETAILS_ROUTE, slug=slug))
 
 

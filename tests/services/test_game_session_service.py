@@ -131,3 +131,179 @@ class TestGameSessionService:
         assert stats["base_day"].day == 1
         assert stats["num_os"] == 0
         assert stats["num_campaign"] == 0
+
+    def test_create_with_valid_location(self, db_session, sample_game):
+        service = GameSessionService()
+        start = datetime(2025, 12, 1, 20, 0)
+        end = datetime(2025, 12, 1, 23, 0)
+        session = service.create(
+            sample_game, start, end,
+            location_type="online", location_label="Discord"
+        )
+        assert session.location_type == "online"
+        assert session.location_label == "Discord"
+        assert session.location_url is None
+
+    def test_create_location_type_without_label_raises(self, db_session, sample_game):
+        service = GameSessionService()
+        start = datetime(2025, 12, 2, 20, 0)
+        end = datetime(2025, 12, 2, 23, 0)
+        # empty string
+        with pytest.raises(ValidationError):
+            service.create(sample_game, start, end, location_type="online", location_label="")
+        # None (omitted)
+        with pytest.raises(ValidationError):
+            service.create(sample_game, start, end, location_type="online")
+
+    def test_create_invalid_location_type(self, db_session, sample_game):
+        service = GameSessionService()
+        start = datetime(2025, 12, 2, 20, 0)
+        end = datetime(2025, 12, 2, 23, 0)
+        with pytest.raises(ValidationError):
+            service.create(sample_game, start, end, location_type="invalid_type", location_label="Test")
+
+    def test_update_invalid_location_type(self, db_session, sample_game):
+        service = GameSessionService()
+        session = service.create(
+            sample_game, datetime(2025, 12, 2, 20, 0), datetime(2025, 12, 2, 23, 0)
+        )
+        with pytest.raises(ValidationError):
+            service.update(session, datetime(2025, 12, 2, 20, 0), datetime(2025, 12, 2, 23, 0), location_type="bad_type", location_label="Test")
+
+    def test_create_clears_location_fields_when_type_none(self, db_session, sample_game):
+        service = GameSessionService()
+        start = datetime(2025, 12, 4, 20, 0)
+        end = datetime(2025, 12, 4, 23, 0)
+        session = service.create(sample_game, start, end, location_type=None, location_label="Should be cleared", location_url="https://example.com")
+        assert session.location_type is None
+        assert session.location_label is None
+        assert session.location_url is None
+
+    def test_update_location(self, db_session, sample_game):
+        service = GameSessionService()
+        session = service.create(
+            sample_game, datetime(2025, 12, 3, 20, 0), datetime(2025, 12, 3, 23, 0)
+        )
+        updated = service.update(
+            session,
+            datetime(2025, 12, 3, 20, 0),
+            datetime(2025, 12, 3, 23, 0),
+            location_type="inperson",
+            location_label="Salle B12",
+            location_url="https://maps.google.com/test",
+        )
+        assert updated.location_type == "inperson"
+        assert updated.location_label == "Salle B12"
+        assert updated.location_url == "https://maps.google.com/test"
+
+    def test_update_clears_location_fields_when_type_none(self, db_session, sample_game):
+        service = GameSessionService()
+        session = service.create(
+            sample_game, datetime(2025, 12, 5, 20, 0), datetime(2025, 12, 5, 23, 0),
+            location_type="online", location_label="Discord"
+        )
+        updated = service.update(
+            session,
+            datetime(2025, 12, 5, 20, 0),
+            datetime(2025, 12, 5, 23, 0),
+            location_type=None
+        )
+        assert updated.location_type is None
+        assert updated.location_label is None
+        assert updated.location_url is None
+
+
+class TestSessionAttendanceService:
+    @pytest.fixture
+    def session_svc(self, mock_discord):
+        from website.services.game_session import GameSessionService
+        return GameSessionService(discord_service=mock_discord)
+
+    def test_set_attendance_absent_triggers_discord(
+        self, db_session, sample_game, session_svc, mock_discord, admin_user
+    ):
+        from datetime import timedelta
+        session = session_svc.create(
+            sample_game,
+            sample_game.date,
+            sample_game.date + timedelta(hours=3),
+        )
+        sample_game.players.append(admin_user)
+        db_session.commit()
+        session_svc.set_attendance(session, admin_user.id, False, by_gm=False)
+        mock_discord.send_game_embed.assert_called_once()
+        call_kwargs = mock_discord.send_game_embed.call_args[1]
+        assert call_kwargs["embed_type"] == "attendance-alert"
+
+    def test_set_attendance_present_no_discord(
+        self, db_session, sample_game, session_svc, mock_discord, admin_user
+    ):
+        from datetime import timedelta
+        session = session_svc.create(
+            sample_game,
+            sample_game.date,
+            sample_game.date + timedelta(hours=3),
+        )
+        sample_game.players.append(admin_user)
+        db_session.commit()
+        session_svc.set_attendance(session, admin_user.id, True, by_gm=False)
+        mock_discord.send_game_embed.assert_not_called()
+
+    def test_set_attendance_by_gm_no_discord(
+        self, db_session, sample_game, session_svc, mock_discord, admin_user
+    ):
+        from datetime import timedelta
+        session = session_svc.create(
+            sample_game,
+            sample_game.date,
+            sample_game.date + timedelta(hours=3),
+        )
+        sample_game.players.append(admin_user)
+        db_session.commit()
+        session_svc.set_attendance(session, admin_user.id, False, by_gm=True)
+        mock_discord.send_game_embed.assert_not_called()
+
+    def test_set_attendance_toggle_resets_to_no_response(
+        self, db_session, sample_game, session_svc, mock_discord, admin_user
+    ):
+        from datetime import timedelta
+        from website.repositories.session_attendance import SessionAttendanceRepository
+        session = session_svc.create(
+            sample_game,
+            sample_game.date,
+            sample_game.date + timedelta(hours=3),
+        )
+        sample_game.players.append(admin_user)
+        db_session.commit()
+        session_svc.set_attendance(session, admin_user.id, True)
+        session_svc.set_attendance(session, admin_user.id, True)  # toggle off
+        repo = SessionAttendanceRepository()
+        assert repo.find_by_session_and_user(session.id, admin_user.id) is None
+
+    def test_set_attendance_unregistered_player_raises(
+        self, db_session, sample_game, session_svc, admin_user
+    ):
+        from datetime import timedelta
+        session = session_svc.create(
+            sample_game,
+            sample_game.date,
+            sample_game.date + timedelta(hours=3),
+        )
+        with pytest.raises(ValidationError):
+            session_svc.set_attendance(session, admin_user.id, True)
+
+    def test_get_attendance_summary(
+        self, db_session, sample_game, session_svc, admin_user, regular_user
+    ):
+        from datetime import timedelta
+        session = session_svc.create(
+            sample_game,
+            sample_game.date,
+            sample_game.date + timedelta(hours=3),
+        )
+        sample_game.players.extend([admin_user, regular_user])
+        db_session.commit()
+        session_svc.set_attendance(session, admin_user.id, True)
+        summary = session_svc.get_attendance_summary(session)
+        assert summary[admin_user.id] is True
+        assert summary[regular_user.id] is None
