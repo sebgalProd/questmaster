@@ -261,13 +261,14 @@ class GameService:
         Raises:
             DiscordAPIError: If Discord operations fail.
         """
-        # Create initial game session
-        self.session_service.create(
-            game,
-            game.date,
-            game.date + timedelta(hours=float(game.session_length)),
-        )
-        logger.info("Initial game session created.")
+        # Create initial game session (skip if already committed from a previous failed attempt)
+        expected_start = game.date
+        expected_end = game.date + timedelta(hours=float(game.session_length))
+        if not any(s.start == expected_start for s in game.sessions):
+            self.session_service.create(game, expected_start, expected_end)
+            logger.info("Initial game session created.")
+        else:
+            logger.info("Initial game session already exists, skipping creation.")
 
         # Create Discord role
         game.role = self.discord.create_role(
