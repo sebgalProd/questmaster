@@ -189,6 +189,9 @@ def create_game():
             msg = f"Annonce {game.name} postée."
         else:
             msg = f"Annonce {game.name} enregistrée."
+    except ValidationError as e:
+        flash(e.message, "danger")
+        return redirect(url_for(SEARCH_GAMES_ROUTE))
     except QuestMasterError as e:
         logger.error(f"Failed to save game: {e}", exc_info=True)
         flash("Une erreur est survenue pendant la création de l'annonce.", "danger")
@@ -221,6 +224,9 @@ def edit_game(slug):
                 if action == "open-silent"
                 else "Annonce modifiée et postée."
             )
+    except ValidationError as e:
+        flash(e.message, "danger")
+        return redirect(url_for(GAME_DETAILS_ROUTE, slug=slug))
     except DiscordAPIError as e:
         logger.error(f"Discord error while editing game {slug}: {e}", exc_info=True)
         flash("Une erreur est survenue pendant l'enregistrement.", "danger")
