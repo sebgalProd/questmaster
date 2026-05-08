@@ -367,6 +367,12 @@ class DiscordService:
             game, start, end, player, old_start, old_end, alert_message
         )
 
+        if not target:
+            logger.warning(
+                f"No Discord channel for game {game.id}, skipping embed '{embed_type}'."
+            )
+            return ""
+
         if embed_type == "annonce" and game.msg_id:
             response = self.edit_embed(game.msg_id, embed, target)
         else:
