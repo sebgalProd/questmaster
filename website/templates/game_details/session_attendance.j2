@@ -1,7 +1,7 @@
 {# session_attendance.j2 — attendance display for a single session card
    Variables available: session, game, payload, is_player, attendance_data, now (datetime function) #}
 
-{% set data = attendance_data[session.id] %}
+{% set data = attendance_data.get(session.id, {'summary': {}, 'present': 0, 'absent': 0, 'no_reply': 0}) %}
 {% set summary = data.summary %}
 {% set current_time = now() %}
 {% set is_future = session.end > current_time %}
@@ -60,7 +60,7 @@
 {% endif %}
 
 {# GM per-player toggle list #}
-{% if (payload['user_id'] == game.gm_id or payload['is_admin']) and summary %}
+{% if (payload['user_id'] == game.gm.id or payload['is_admin']) and summary %}
 <div class="mt-2">
   <div class="list-group list-group-flush">
     {% for player in game.players %}

@@ -60,5 +60,10 @@ function toggleEditLocation(sid) {
   const type = document.getElementById('edit_location_type_' + sid).value;
   document.getElementById('edit_' + sid + '_location_label_group').style.display = type ? 'block' : 'none';
   document.getElementById('edit_' + sid + '_location_url_group').style.display = (type === 'inperson') ? 'block' : 'none';
+  if (!type) {
+    document.getElementById('edit_' + sid + '_location_label').value = '';
+    const urlEl = document.getElementById('edit_' + sid + '_location_url');
+    if (urlEl) urlEl.value = '';
+  }
 }
 </script>
