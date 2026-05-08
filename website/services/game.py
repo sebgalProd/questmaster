@@ -596,7 +596,8 @@ class GameService:
         Args:
             game: Game instance.
         """
-        self.channel_service.adjust_category_size(self.discord, game)
+        if game.channel:
+            self.channel_service.adjust_category_size(self.discord, game)
 
         if game.voice_channel_id:
             try:
@@ -605,17 +606,19 @@ class GameService:
             except DiscordAPIError as e:
                 logger.warning(f"Failed to delete voice channel for game {game.id}: {e}")
 
-        try:
-            self.discord.delete_channel(game.channel)
-            logger.info(f"Game {game.id} channel {game.channel} has been deleted")
-        except DiscordAPIError as e:
-            logger.warning(f"Failed to delete channel for game {game.id}: {e}")
+        if game.channel:
+            try:
+                self.discord.delete_channel(game.channel)
+                logger.info(f"Game {game.id} channel {game.channel} has been deleted")
+            except DiscordAPIError as e:
+                logger.warning(f"Failed to delete channel for game {game.id}: {e}")
 
-        try:
-            self.discord.delete_role(game.role)
-            logger.info(f"Game {game.id} role {game.role} has been deleted")
-        except DiscordAPIError as e:
-            logger.warning(f"Failed to delete role for game {game.id}: {e}")
+        if game.role:
+            try:
+                self.discord.delete_role(game.role)
+                logger.info(f"Game {game.id} role {game.role} has been deleted")
+            except DiscordAPIError as e:
+                logger.warning(f"Failed to delete role for game {game.id}: {e}")
 
     def _delete_game_message(self, game: Game) -> None:
         """Delete Discord announcement message.

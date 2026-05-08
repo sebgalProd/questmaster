@@ -17,6 +17,14 @@ if TYPE_CHECKING:
     from website.models import Game
 
 
+def _default_game_entry() -> dict:
+    return {"count": 0, "gm": ""}
+
+
+def _nested_game_dict() -> defaultdict:
+    return defaultdict(_default_game_entry)
+
+
 class GameSessionService:
     """Service layer for GameSession operations.
 
@@ -160,8 +168,8 @@ class GameSessionService:
 
         num_os = 0
         num_campaign = 0
-        os_games: dict = defaultdict(lambda: defaultdict(self._default_game_entry))
-        campaign_games: dict = defaultdict(lambda: defaultdict(self._default_game_entry))
+        os_games: dict = defaultdict(_nested_game_dict)
+        campaign_games: dict = defaultdict(_nested_game_dict)
         gm_names: list[str] = []
 
         for session in sessions:
@@ -195,10 +203,6 @@ class GameSessionService:
             "gm_names": gm_names,
         }
 
-    @staticmethod
-    def _default_game_entry():
-        """Return a default game entry dict for stats aggregation."""
-        return {"count": 0, "gm": ""}
 
     @staticmethod
     def _has_conflict(game, start_dt, end_dt, exclude_session_id=None):
