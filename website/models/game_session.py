@@ -16,7 +16,7 @@ class GameSession(db.Model, SerializableMixin):
         start: Session start datetime.
         end: Session end datetime.
         location_type: Type of location (online or inperson), nullable.
-        location_label: Optional label; the service layer requires it when location_type is set.
+        location_label: Optional free-text label for the location (e.g. "Discord", "Salle B12").
         location_url: Optional URL (Google Maps or invite link).
     """
 
