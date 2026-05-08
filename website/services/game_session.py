@@ -7,6 +7,7 @@ from collections import defaultdict
 from datetime import datetime
 from typing import TYPE_CHECKING
 
+from config.constants import SESSION_LOCATION_TYPES
 from website.exceptions import SessionConflictError, ValidationError
 from website.extensions import cache, db
 from website.models import GameSession
@@ -63,10 +64,19 @@ class GameSessionService:
         if start >= end:
             raise ValidationError("Session start must be before end time.")
 
+        if location_type and location_type not in SESSION_LOCATION_TYPES:
+            raise ValidationError(
+                f"Type de lieu invalide : '{location_type}'.", field="location_type"
+            )
+
         if location_type and not location_label:
             raise ValidationError(
                 "Le lieu doit avoir un nom.", field="location_label"
             )
+
+        if not location_type:
+            location_label = None
+            location_url = None
 
         if self._has_conflict(game, start, end):
             raise SessionConflictError(
@@ -128,10 +138,19 @@ class GameSessionService:
         if new_start >= new_end:
             raise ValidationError("Session start must be before end time.")
 
+        if location_type and location_type not in SESSION_LOCATION_TYPES:
+            raise ValidationError(
+                f"Type de lieu invalide : '{location_type}'.", field="location_type"
+            )
+
         if location_type and not location_label:
             raise ValidationError(
                 "Le lieu doit avoir un nom.", field="location_label"
             )
+
+        if not location_type:
+            location_label = None
+            location_url = None
 
         game = session.game
         if self._has_conflict(game, new_start, new_end, exclude_session_id=session.id):

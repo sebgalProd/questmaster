@@ -148,8 +148,36 @@ class TestGameSessionService:
         service = GameSessionService()
         start = datetime(2025, 12, 2, 20, 0)
         end = datetime(2025, 12, 2, 23, 0)
+        # empty string
         with pytest.raises(ValidationError):
             service.create(sample_game, start, end, location_type="online", location_label="")
+        # None (omitted)
+        with pytest.raises(ValidationError):
+            service.create(sample_game, start, end, location_type="online")
+
+    def test_create_invalid_location_type(self, db_session, sample_game):
+        service = GameSessionService()
+        start = datetime(2025, 12, 2, 20, 0)
+        end = datetime(2025, 12, 2, 23, 0)
+        with pytest.raises(ValidationError):
+            service.create(sample_game, start, end, location_type="invalid_type", location_label="Test")
+
+    def test_update_invalid_location_type(self, db_session, sample_game):
+        service = GameSessionService()
+        session = service.create(
+            sample_game, datetime(2025, 12, 2, 20, 0), datetime(2025, 12, 2, 23, 0)
+        )
+        with pytest.raises(ValidationError):
+            service.update(session, datetime(2025, 12, 2, 20, 0), datetime(2025, 12, 2, 23, 0), location_type="bad_type", location_label="Test")
+
+    def test_create_clears_location_fields_when_type_none(self, db_session, sample_game):
+        service = GameSessionService()
+        start = datetime(2025, 12, 4, 20, 0)
+        end = datetime(2025, 12, 4, 23, 0)
+        session = service.create(sample_game, start, end, location_type=None, location_label="Should be cleared", location_url="https://example.com")
+        assert session.location_type is None
+        assert session.location_label is None
+        assert session.location_url is None
 
     def test_update_location(self, db_session, sample_game):
         service = GameSessionService()
@@ -167,3 +195,19 @@ class TestGameSessionService:
         assert updated.location_type == "inperson"
         assert updated.location_label == "Salle B12"
         assert updated.location_url == "https://maps.google.com/test"
+
+    def test_update_clears_location_fields_when_type_none(self, db_session, sample_game):
+        service = GameSessionService()
+        session = service.create(
+            sample_game, datetime(2025, 12, 5, 20, 0), datetime(2025, 12, 5, 23, 0),
+            location_type="online", location_label="Discord"
+        )
+        updated = service.update(
+            session,
+            datetime(2025, 12, 5, 20, 0),
+            datetime(2025, 12, 5, 23, 0),
+            location_type=None
+        )
+        assert updated.location_type is None
+        assert updated.location_label is None
+        assert updated.location_url is None
