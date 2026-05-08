@@ -215,6 +215,31 @@ class TestGameService:
         with pytest.raises(ValidationError, match="already published"):
             game_service.publish(sample_game.slug)
 
+    def test_publish_retry_after_partial_failure_does_not_raise_conflict(
+        self, db_session, sample_game, mock_discord, game_service, oneshot_channel
+    ):
+        """Retrying publish after a Discord failure must not raise SessionConflictError.
+
+        Simulates the case where the initial session was committed during a first
+        publish attempt before Discord failed. The retry must skip session creation.
+        """
+        from datetime import timedelta
+
+        from website.models import GameSession
+
+        # Simulate the orphan session left by a failed first publish attempt
+        orphan = GameSession(
+            game_id=sample_game.id,
+            start=sample_game.date,
+            end=sample_game.date + timedelta(hours=float(sample_game.session_length)),
+        )
+        db_session.add(orphan)
+        db_session.commit()
+
+        # Retry publish — must not raise SessionConflictError
+        game = game_service.publish(sample_game.slug, silent=True)
+        assert game.status == "closed"
+
     def test_close_game(self, db_session, sample_game, game_service):
         sample_game.status = "open"
         db_session.commit()
