@@ -183,6 +183,12 @@ class GameService:
         )
 
         try:
+            if len(data["name"]) > 100:
+                raise ValidationError(
+                    "Le nom de l'annonce ne peut pas dépasser 100 caractères.",
+                    field="name",
+                )
+
             # Parse special fields
             game_type, special_event_id = self.parse_game_type(data["type"])
 
@@ -349,6 +355,12 @@ class GameService:
         game = self.get_by_slug(slug)
 
         try:
+            if game.status == "draft" and len(data["name"]) > 100:
+                raise ValidationError(
+                    "Le nom de l'annonce ne peut pas dépasser 100 caractères.",
+                    field="name",
+                )
+
             # Only allow type/name changes if game is draft
             if game.status == "draft":
                 game_type, special_event_id = self.parse_game_type(data["type"])
