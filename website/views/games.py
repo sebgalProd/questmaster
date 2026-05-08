@@ -1,7 +1,7 @@
 """Game announcement views."""
 
 import locale
-from datetime import datetime, timezone
+from datetime import datetime
 
 from flask import Blueprint, Response, flash, redirect, render_template, request, url_for
 
@@ -439,10 +439,14 @@ def remove_game_session(slug, session_id):
 def set_session_presence(slug, session_id):
     """Player marks their own attendance for a session."""
     payload = who()
-    game = game_service.get_by_slug_or_404(slug)  # noqa: F841
+    game = game_service.get_by_slug_or_404(slug)
     session = session_service.get_by_id_or_404(session_id)
 
-    if session.end < datetime.now(timezone.utc).replace(tzinfo=None):
+    if session.game_id != game.id:
+        flash("Session introuvable pour cette annonce.", "danger")
+        return redirect(url_for(GAME_DETAILS_ROUTE, slug=slug))
+
+    if session.end < datetime.utcnow():
         flash("Impossible de modifier la présence d'une session passée.", "danger")
         return redirect(url_for(GAME_DETAILS_ROUTE, slug=slug))
 
