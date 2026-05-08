@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Optional
 
 from config.constants import PLAYER_ROLE_PERMISSION
 from website.client.discord import Discord
+from website.utils.logger import logger
 
 if TYPE_CHECKING:
     from website.models import Game
@@ -325,7 +326,7 @@ class DiscordService:
         Args:
             game: Game model instance.
             embed_type: Type of embed ('annonce', 'annonce_details', 'add-session',
-                'edit-session', 'del-session', 'register', 'alert').
+                'edit-session', 'del-session', 'register', 'alert', 'attendance-alert').
             start: Session start datetime (for session embeds).
             end: Session end datetime (for session embeds).
             player: Player user ID (for register/alert embeds).

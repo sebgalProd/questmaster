@@ -25,6 +25,7 @@ from website.exceptions import (
 from website.extensions import db
 from website.models import Game
 from website.repositories.game import GameRepository
+from website.repositories.session_attendance import SessionAttendanceRepository
 from website.services.channel import ChannelService
 from website.services.game_session import GameSessionService
 from website.services.trophy import TrophyService
@@ -795,8 +796,6 @@ class GameService:
         game.players.remove(user)
 
         # Delete all attendance records for this user across all sessions of this game
-        from website.repositories.session_attendance import SessionAttendanceRepository
-
         SessionAttendanceRepository().delete_by_game_and_user(game.id, user.id)
 
         # Reopen if it was full
