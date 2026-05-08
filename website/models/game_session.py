@@ -2,6 +2,7 @@
 
 from sqlalchemy import Enum
 
+from config.constants import SESSION_LOCATION_TYPES
 from website.extensions import db
 from website.models.base import SerializableMixin
 
@@ -15,7 +16,7 @@ class GameSession(db.Model, SerializableMixin):
         start: Session start datetime.
         end: Session end datetime.
         location_type: Type of location (online or inperson), nullable.
-        location_label: Free text label, required when location_type is set.
+        location_label: Optional label; the service layer requires it when location_type is set.
         location_url: Optional URL (Google Maps or invite link).
     """
 
@@ -30,7 +31,7 @@ class GameSession(db.Model, SerializableMixin):
     end = db.Column(db.DateTime, nullable=False)
     location_type = db.Column(
         "location_type",
-        Enum("online", "inperson", name="session_location_enum"),
+        Enum(*SESSION_LOCATION_TYPES, name="session_location_enum"),
         nullable=True,
     )
     location_label = db.Column(db.String(), nullable=True)
