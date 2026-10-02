@@ -92,5 +92,5 @@ depuis QuestMaster (ex. `contre-les-coups-de-mou`, `bitcoin`, `la chouette d'or`
 
 ## 6. Hors périmètre, repéré en passant
 
-- `website/services/discord.py:371` utilise `logger` sans l'importer (erreur flake8 F821, qui
-  existait déjà). Non corrigé ici.
+- ~~`website/services/discord.py:371` utilise `logger` sans l'importer (erreur flake8 F821, qui
+  existait déjà).~~ Corrigé ensuite (commit `fix(discord)`), avec un test.

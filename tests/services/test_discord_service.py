@@ -240,6 +240,17 @@ class TestDiscordService:
             mock_bot.edit_embed_message.assert_called_once()
             assert result == "existing_msg_456"
 
+    def test_send_game_embed_skips_game_without_channel(self, discord_service, mock_bot):
+        """Test that a game without Discord channel skips the embed instead of crashing."""
+        mock_game = MagicMock()
+        mock_game.id = 42
+        mock_game.channel = None
+
+        result = discord_service.send_game_embed(mock_game, embed_type="register", player="123")
+
+        assert result == ""
+        mock_bot.send_embed_message.assert_not_called()
+
     def test_send_game_embed_unknown_type_raises(self, discord_service):
         """Test that unknown embed type raises ValueError."""
         mock_game = MagicMock()

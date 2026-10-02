@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING, Optional
 
 from config.constants import PLAYER_ROLE_PERMISSION
 from website.client.discord import Discord
+from website.utils.logger import logger
 
 if TYPE_CHECKING:
     from website.models import Game
