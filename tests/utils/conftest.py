@@ -16,4 +16,5 @@ def embed_app():
     app = Flask(__name__)
     app.config["POSTS_CHANNEL_ID"] = "test_posts_ch"
     app.config["ADMIN_CHANNEL_ID"] = "test_admin_ch"
+    app.config["DISCORD_GUILD_NAME"] = "Club Test"
     return app

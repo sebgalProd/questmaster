@@ -133,7 +133,7 @@ class TestNormalizeSearchDefaults:
     def test_empty_inputs_use_defaults(self):
         status, game_type, restriction = normalize_search_defaults([], [], [])
         assert status == ["open"]
-        assert game_type == ["oneshot", "campaign"]
+        assert game_type == ["oneshot", "campaign", "videogame", "salon"]
         assert restriction == ["all", "16+", "18+"]
 
     def test_provided_values_kept(self):
@@ -160,7 +160,7 @@ class TestNormalizeSearchDefaults:
     def test_partial_empty(self):
         status, game_type, restriction = normalize_search_defaults(["open", "closed"], [], ["all"])
         assert status == ["open", "closed"]
-        assert game_type == ["oneshot", "campaign"]
+        assert game_type == ["oneshot", "campaign", "videogame", "salon"]
         assert restriction == ["all"]
 
     def test_none_defaults_use_builtin(self):
@@ -168,7 +168,7 @@ class TestNormalizeSearchDefaults:
             [], [], [], default_status=None, default_type=None, default_restriction=None
         )
         assert status == ["open"]
-        assert game_type == ["oneshot", "campaign"]
+        assert game_type == ["oneshot", "campaign", "videogame", "salon"]
         assert restriction == ["all", "16+", "18+"]
 
 

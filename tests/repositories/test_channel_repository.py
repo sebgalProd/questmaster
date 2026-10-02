@@ -18,10 +18,9 @@ class TestChannelRepository:
         assert channel is not None
         assert channel.type == "campaign"
 
-    def test_get_smallest_by_type_invalid_enum_raises(self, db_session):
+    def test_get_smallest_by_type_unknown_type_returns_none(self, db_session):
         repo = ChannelRepository()
-        with pytest.raises(Exception):
-            repo.get_smallest_by_type("nonexistent")
+        assert repo.get_smallest_by_type("nonexistent") is None
 
     def test_get_smallest_by_type_returns_smallest(self, db_session):
         repo = ChannelRepository()
