@@ -7,7 +7,7 @@ from flask import Blueprint, redirect, request, session, url_for
 
 from config.constants import SEARCH_GAMES_ROUTE
 from website.exceptions import UnauthorizedError
-from website.extensions import discord
+from website.extensions import db, discord
 from website.services.user import UserService
 from website.utils.logger import logger
 
@@ -82,7 +82,10 @@ def callback():
         try:
             UserService().link_steam_from_connections(user, discord.fetch_connections())
         except Exception as e:
-            logger.warning(f"Could not read Discord connections for user {user.id}: {e}")
+            db.session.rollback()
+            logger.warning(
+                f"Could not link Steam from Discord connections for user {user.id}: {e}"
+            )
         if not user.is_player:
             raise UnauthorizedError(
                 "User is not a player on the Discord server.",

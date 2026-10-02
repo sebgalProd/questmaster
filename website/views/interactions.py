@@ -2,11 +2,13 @@
 
 import json
 import threading
+import time
 
 from flask import Blueprint, current_app, jsonify, request
 
 from config.constants import SITE_BASE_URL
 from website.bot import get_bot
+from website.exceptions import DiscordAPIError
 from website.extensions import csrf, db
 from website.services.steam import STATUS_OK, SteamService
 from website.services.user import UserService
@@ -24,6 +26,9 @@ CHANNEL_MESSAGE = 4
 DEFERRED_CHANNEL_MESSAGE = 5
 EPHEMERAL = 64
 ERROR_MESSAGE = "Une erreur est survenue, réessaie plus tard."
+# Discord may not have registered the deferred answer yet when the thread edits it
+EDIT_RETRY_DELAYS = (0.5, 1, 2)
+NO_MENTIONS = {"parse": []}
 
 
 def _ephemeral(content: str) -> dict:
@@ -54,12 +59,46 @@ def _start_background(target, *args):
     threading.Thread(target=runner, daemon=True).start()
 
 
+def _edit_original(application_id: str, token: str, message: dict) -> None:
+    """Replace the deferred answer, retrying while Discord has not registered it yet."""
+    message = {**message, "allowed_mentions": NO_MENTIONS}
+    for delay in (*EDIT_RETRY_DELAYS, None):
+        try:
+            get_bot().edit_interaction_response(application_id, token, message)
+            return
+        except DiscordAPIError as e:
+            if e.status_code != 404 or delay is None:
+                raise
+            time.sleep(delay)
+
+
+def _run_steam_status(app, application_id: str, token: str, user_id: str):
+    with app.app_context():
+        try:
+            user = UserService().repo.get_by_id(user_id)
+            library = SteamService().get_library(user)
+            count = len(library.games) if library.status == STATUS_OK else 0
+            content = build_steam_status_message(library.status, count, f"{SITE_BASE_URL}/login/")
+            message = {"content": content}
+        except Exception:
+            logger.exception("Failed to compute Steam status")
+            message = {"content": ERROR_MESSAGE}
+        try:
+            _edit_original(application_id, token, message)
+        except Exception:
+            logger.exception("Failed to edit interaction response")
+
+
 def _steam_status(payload: dict) -> dict:
     user_id, _ = _invoker(payload)
-    user = UserService().repo.get_by_id(user_id)
-    library = SteamService().get_library(user)
-    count = len(library.games) if library.status == STATUS_OK else 0
-    return _ephemeral(build_steam_status_message(library.status, count, f"{SITE_BASE_URL}/login/"))
+    _start_background(
+        _run_steam_status,
+        current_app._get_current_object(),
+        payload["application_id"],
+        payload["token"],
+        user_id,
+    )
+    return {"type": DEFERRED_CHANNEL_MESSAGE, "data": {"flags": EPHEMERAL}}
 
 
 def _run_common_games(app, application_id: str, token: str, members: list[tuple[str, str]]):
@@ -72,7 +111,7 @@ def _run_common_games(app, application_id: str, token: str, members: list[tuple[
             logger.exception("Failed to compute common Steam games")
             message = {"content": ERROR_MESSAGE}
         try:
-            get_bot().edit_interaction_response(application_id, token, message)
+            _edit_original(application_id, token, message)
         except Exception:
             logger.exception("Failed to edit interaction response")
 

@@ -54,7 +54,7 @@ def get_user_profile(user_id, force_refresh=False):
         if avatar_hash:
             potential_url = AVATAR_BASE_URL.format(user_id, avatar_hash)
             try:
-                response = requests.head(potential_url)
+                response = requests.head(potential_url, timeout=5)
                 if response.status_code == 200:
                     avatar_url = potential_url
             except requests.RequestException:

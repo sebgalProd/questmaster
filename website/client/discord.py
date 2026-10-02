@@ -19,6 +19,8 @@ from config.constants import (
 from website.exceptions import DiscordAPIError
 from website.utils.logger import logger
 
+REQUEST_TIMEOUT = 15
+
 
 class Discord:
     """Low-level Discord API client.
@@ -63,7 +65,9 @@ class Discord:
             headers["X-Audit-Log-Reason"] = reason
 
         for attempt in range(max_retries):
-            r = requests.request(method, url, headers=headers, json=json, params=params)
+            r = requests.request(
+                method, url, headers=headers, json=json, params=params, timeout=REQUEST_TIMEOUT
+            )
 
             # Handle rate limiting (HTTP 429)
             if r.status_code == 429:
@@ -202,7 +206,9 @@ class Discord:
             endpoint=f"/guilds/{self.guild_id}/channels", method="POST", json=payload
         )
 
-    def create_voice_channel(self, channel_name: str, parent_id: str, role_id: str, gm_id: str) -> dict:
+    def create_voice_channel(
+        self, channel_name: str, parent_id: str, role_id: str, gm_id: str
+    ) -> dict:
         """Create a voice channel in the guild with role-based permissions.
 
         Args:

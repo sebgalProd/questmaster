@@ -37,3 +37,15 @@ def test_command_definitions():
     assert all(o["type"] == 6 for o in options)
     assert options[0]["required"] is True
     assert not any(o.get("required") for o in options[1:])
+
+
+def test_discord_requests_have_a_timeout():
+    from unittest.mock import patch
+
+    client = Discord.__new__(Discord)
+    client.headers = {}
+    ok = MagicMock(status_code=200, ok=True, content=b"{}")
+    ok.json.return_value = {}
+    with patch("website.client.discord.requests.request", return_value=ok) as req:
+        client._request("GET", "/users/@me")
+    assert req.call_args.kwargs.get("timeout")

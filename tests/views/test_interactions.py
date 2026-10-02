@@ -73,15 +73,20 @@ def test_missing_public_key_returns_503(client, db_session, test_app, monkeypatc
     assert response.status_code == 503
 
 
-def test_steam_status_is_ephemeral(client, db_session, signing_key):
+def test_steam_status_is_deferred_ephemeral_then_edited(client, db_session, signing_key):
     service = MagicMock()
     service.get_library.return_value = LibraryResult(STATUS_OK, [{"appid": 1}] * 3)
-    with patch("website.views.interactions.SteamService", return_value=service):
+    bot = MagicMock()
+    with (
+        patch("website.views.interactions.SteamService", return_value=service),
+        patch("website.views.interactions.get_bot", return_value=bot),
+        patch("website.views.interactions._start_background", side_effect=_run_inline),
+    ):
         response = _post(client, signing_key, _command("steam-statut"))
-    data = response.get_json()
-    assert data["type"] == 4
-    assert data["data"]["flags"] == 64
-    assert "3 jeux" in data["data"]["content"]
+    assert response.get_json() == {"type": 5, "data": {"flags": 64}}
+    app_id, token, payload = bot.edit_interaction_response.call_args.args
+    assert (app_id, token) == ("app1", "tok")
+    assert "3 jeux" in payload["content"]
 
 
 def test_common_games_defers_then_edits_response(client, db_session, signing_key):
@@ -142,7 +147,11 @@ def test_unknown_member_is_not_linked(client, db_session, signing_key):
 def test_command_from_direct_message(client, db_session, signing_key):
     service = MagicMock()
     service.get_library.return_value = LibraryResult(STATUS_NOT_LINKED)
-    with patch("website.views.interactions.SteamService", return_value=service):
+    with (
+        patch("website.views.interactions.SteamService", return_value=service),
+        patch("website.views.interactions.get_bot", return_value=MagicMock()),
+        patch("website.views.interactions._start_background", side_effect=_run_inline),
+    ):
         response = _post(client, signing_key, _command("steam-statut", dm=True))
     assert response.status_code == 200
     user_arg = service.get_library.call_args.args[0]
@@ -160,7 +169,45 @@ def test_background_error_edits_response_with_error_message(client, db_session, 
     ):
         _post(client, signing_key, _command("jeux-en-commun", [_opt(1, TEST_ADMIN_USER_ID)]))
     payload = bot.edit_interaction_response.call_args.args[2]
-    assert payload == {"content": "Une erreur est survenue, réessaie plus tard."}
+    assert payload["content"] == "Une erreur est survenue, réessaie plus tard."
+    assert payload["allowed_mentions"] == {"parse": []}
+
+
+def test_edit_is_retried_when_discord_has_not_registered_the_deferral(
+    client, db_session, signing_key
+):
+    from website.exceptions import DiscordAPIError
+
+    service = MagicMock()
+    service.common_games.return_value = CommonGamesResult(["A", "B"], [], [], 0, False)
+    bot = MagicMock()
+    bot.edit_interaction_response.side_effect = [
+        DiscordAPIError("Unknown Webhook", status_code=404),
+        {},
+    ]
+    with (
+        patch("website.views.interactions.SteamService", return_value=service),
+        patch("website.views.interactions.get_bot", return_value=bot),
+        patch("website.views.interactions._start_background", side_effect=_run_inline),
+        patch("website.views.interactions.time.sleep") as sleep,
+    ):
+        _post(client, signing_key, _command("jeux-en-commun", [_opt(1, TEST_ADMIN_USER_ID)]))
+    assert bot.edit_interaction_response.call_count == 2
+    sleep.assert_called()
+
+
+def test_member_names_never_ping(client, db_session, signing_key):
+    service = MagicMock()
+    service.common_games.return_value = CommonGamesResult(["@everyone", "B"], [], [], 0, False)
+    bot = MagicMock()
+    with (
+        patch("website.views.interactions.SteamService", return_value=service),
+        patch("website.views.interactions.get_bot", return_value=bot),
+        patch("website.views.interactions._start_background", side_effect=_run_inline),
+    ):
+        _post(client, signing_key, _command("jeux-en-commun", [_opt(1, TEST_ADMIN_USER_ID)]))
+    payload = bot.edit_interaction_response.call_args.args[2]
+    assert payload["allowed_mentions"] == {"parse": []}
 
 
 def test_background_thread_closes_db_session_even_on_error():
