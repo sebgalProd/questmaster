@@ -315,3 +315,32 @@ class Discord:
             endpoint=f"/guilds/{self.guild_id}/members/{user_id}/roles/{role_id}",
             method="DELETE",
         )
+
+    def edit_interaction_response(self, application_id: str, token: str, payload: dict) -> dict:
+        """Replace the original response of an interaction.
+
+        Args:
+            application_id: Discord application ID (from the interaction).
+            token: Interaction token, valid for 15 minutes.
+            payload: New message payload (content, embeds).
+
+        Returns:
+            The edited message object.
+        """
+        return self._request(
+            "PATCH", f"/webhooks/{application_id}/{token}/messages/@original", json=payload
+        )
+
+    def register_guild_commands(self, application_id: str, commands: list[dict]):
+        """Overwrite the application's slash commands on the guild.
+
+        Args:
+            application_id: Discord application ID.
+            commands: Command definitions.
+
+        Returns:
+            The list of registered commands.
+        """
+        return self._request(
+            "PUT", f"/applications/{application_id}/guilds/{self.guild_id}/commands", json=commands
+        )

@@ -10,7 +10,16 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from website import models
 from website.bot import set_bot
 from website.client.discord import Discord
-from website.extensions import cache, csrf, db, discord, migrate, seed_trophies, setup_test_db
+from website.extensions import (
+    cache,
+    csrf,
+    db,
+    discord,
+    migrate,
+    register_discord_commands,
+    seed_trophies,
+    setup_test_db,
+)
 from website.scheduler import start_scheduler
 from website.utils import get_app_version
 from website.utils.logger import configure_logging
@@ -82,6 +91,7 @@ def create_app():
     discord.init_app(app)
     app.cli.add_command(seed_trophies)
     app.cli.add_command(setup_test_db)
+    app.cli.add_command(register_discord_commands)
 
     # Create bot instance and store it
     bot_instance = Discord(app.config["DISCORD_GUILD_ID"], app.config["DISCORD_BOT_TOKEN"])

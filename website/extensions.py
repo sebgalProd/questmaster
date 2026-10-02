@@ -1,6 +1,7 @@
 """Flask extension instances and CLI commands."""
 
 import click
+from flask import current_app
 from flask.cli import with_appcontext
 from flask_caching import Cache
 from flask_discord import DiscordOAuth2Session
@@ -8,6 +9,8 @@ from flask_migrate import Migrate
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf.csrf import CSRFProtect
 from sqlalchemy import inspect
+
+from website.bot import get_bot
 
 db = SQLAlchemy()
 migrate = Migrate()
@@ -135,6 +138,18 @@ def _seed_trophies():
 def seed_trophies():
     """CLI command to seed trophies."""
     _seed_trophies()
+
+
+@click.command("register-discord-commands")
+@with_appcontext
+def register_discord_commands():
+    """CLI command to register QuestMaster's slash commands on the guild."""
+    from website.utils.discord_commands import DISCORD_COMMANDS
+
+    registered = get_bot().register_guild_commands(
+        current_app.config["DISCORD_CLIENT_ID"], DISCORD_COMMANDS
+    )
+    click.echo(f"{len(registered)} commandes enregistrées.")
 
 
 @click.command("setup-test-db")
