@@ -24,3 +24,14 @@
 **À prévoir** : une nouvelle table (candidatures : partie, joueur, statut, date) et sa migration,
 des méthodes de service (candidater, accepter, refuser), les boutons sur la fiche, un message
 Discord à l'acceptation, une entrée dans le journal d'activité, des tests.
+
+## Jeux Steam en commun — finitions repérées en relecture (noté le 2026-10-02)
+
+Points mineurs relevés par la relecture de la branche `feat/steam-common-games`, non corrigés :
+- Vérifier la fraîcheur de `X-Signature-Timestamp` (refuser au-delà de 5 min) contre le rejeu.
+- Signaler dans les journaux une `DISCORD_PUBLIC_KEY` mal formée (aujourd'hui : 401 silencieux).
+- Signaler une `STEAM_API_KEY` absente (aujourd'hui : « Steam ne répond pas » pour tout le monde).
+- Utiliser le pseudo de serveur des membres cités (`resolved.members[id].nick`).
+- Ignorer une connexion Steam révoquée (`revoked`) à la liaison.
+- Échapper toute la mise en forme Markdown dans les noms de jeux (`* _ ~ \` |`).
+- Fils d'exécution illimités ; un redéploiement pendant un calcul laisse « réfléchit… ».
