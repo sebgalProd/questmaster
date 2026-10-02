@@ -117,7 +117,18 @@ class TestSalon:
         assert salon.status == "open"
         assert salon.sessions == []
         role_name = mock_discord.create_role.call_args.kwargs["name"]
-        assert role_name.startswith("Membre_")
+        assert role_name == "Membre_la-chouette-d-or"
+        channel_name = mock_discord.create_channel.call_args.kwargs["name"]
+        assert channel_name == "la-chouette-d-or"
+
+    def test_game_channel_keeps_gm_suffix(
+        self, db_session, admin_user, default_system, oneshot_channel, mock_discord, game_service
+    ):
+        game = game_service.create(_form_data(system=default_system.id), admin_user.id)
+        game_service.publish(game.slug)
+        channel_name = mock_discord.create_channel.call_args.kwargs["name"]
+        assert channel_name == game.slug.lower()
+        assert "-par-" in channel_name
 
 
 class TestCategoryFallback:

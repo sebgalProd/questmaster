@@ -319,10 +319,13 @@ class GameService:
             else:
                 logger.info("Initial game session already exists, skipping creation.")
 
+        # Salons are named after the announcement only (no "-par-<gm>" suffix)
+        discord_name = slugify(game.name) if game.is_salon else game.slug.lower()
+
         # Create Discord role
         role_prefix = "Membre_" if game.is_salon else "PJ_"
         game.role = self.discord.create_role(
-            name=role_prefix + game.slug,
+            name=role_prefix + discord_name,
             permissions=PLAYER_ROLE_PERMISSION,
             color=Game.COLORS[game.type],
         )["id"]
@@ -331,7 +334,7 @@ class GameService:
         # Create Discord channel
         category = self.channel_service.get_category(game.type)
         game.channel = self.discord.create_channel(
-            name=game.slug.lower(),
+            name=discord_name,
             parent_id=category.id,
             role_id=game.role,
             gm_id=game.gm_id,
@@ -346,7 +349,7 @@ class GameService:
             voice_category = self.channel_service.get_voice_category()
             voice_parent_id = voice_category.id if voice_category else category.id
             game.voice_channel_id = self.discord.create_voice_channel(
-                name=game.slug.lower(),
+                name=discord_name,
                 parent_id=voice_parent_id,
                 role_id=game.role,
                 gm_id=game.gm_id,

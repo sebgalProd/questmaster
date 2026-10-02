@@ -108,3 +108,13 @@ depuis QuestMaster (ex. `contre-les-coups-de-mou`, `bitcoin`, `la chouette d'or`
   supprimer la ligne de l'ancienne catégorie Oneshots.
 - Tant qu'aucune catégorie « Jeu vidéo » ou « Salon » n'est enregistrée, les jeux vidéo et les
   salons sont eux aussi créés dans cette catégorie JDR.
+
+## 8. Nom Discord des salons sans suffixe « -par-pseudo » (2026-10-02)
+
+- Le salon Discord d'un **salon** porte le nom de l'annonce seul, transformé en slug :
+  « contre les coups de mou » donne `contre-les-coups-de-mou`, et le rôle s'appelle
+  `Membre_contre-les-coups-de-mou`. Le salon vocal éventuel porte le même nom.
+- L'adresse de l'annonce sur le site (le slug) garde le suffixe `-par-<pseudo>`, parce qu'elle doit
+  être unique. Discord accepte deux salons de même nom, ce qui pose rarement problème puisque
+  QuestMaster les retrouve par leur ID.
+- Les parties (One Shot, Campagne, Jeu vidéo) ne changent pas : `<nom>-par-<pseudo>`.
