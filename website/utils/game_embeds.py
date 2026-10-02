@@ -64,6 +64,8 @@ def _get_session_type(game) -> str:
         return "Campagne"
     if game.type == "videogame":
         return "Jeu vidéo"
+    if game.type == "salon":
+        return "Salon"
     return "OS"
 
 
@@ -71,15 +73,33 @@ def _build_embed_fields(game, session_type: str, restriction_msg: str) -> list:
     """Return list of embed fields, applying strikethrough if closed."""
     game_url = f"{SITE_BASE_URL}/annonces/{game.slug}/"
 
-    fields = [
-        {"name": "MJ", "value": game.gm.name, "inline": True},
-        {"name": "Système", "value": game.system.name, "inline": True},
-        {"name": "Type de session", "value": session_type, "inline": True},
-        {"name": "Date", "value": game.date.strftime(HUMAN_TIMEFORMAT), "inline": True},
-        {"name": "Durée", "value": game.length, "inline": True},
-        {"name": "Avertissement", "value": restriction_msg},
-        {"name": "Pour s'inscrire :", "value": game_url},
-    ]
+    signup_label = "Pour s'inscrire et afficher le salon caché :"
+
+    if game.type == "salon":
+        fields = [
+            {"name": "Créé par", "value": game.gm.name, "inline": True},
+            {"name": "Type", "value": session_type, "inline": True},
+            {"name": "Avertissement", "value": restriction_msg},
+            {"name": signup_label, "value": game_url},
+        ]
+    else:
+        system_name = game.system.name if game.system else "Système inconnu"
+        if game.permanent or game.date is None:
+            date_value = "Permanent"
+        else:
+            date_value = game.date.strftime(HUMAN_TIMEFORMAT)
+        fields = [
+            {"name": "MJ", "value": game.gm.name, "inline": True},
+            {"name": "Système", "value": system_name, "inline": True},
+            {"name": "Type de session", "value": session_type, "inline": True},
+            {"name": "Date", "value": date_value, "inline": True},
+        ]
+        if not game.permanent:
+            fields.append({"name": "Durée", "value": game.length, "inline": True})
+        fields += [
+            {"name": "Avertissement", "value": restriction_msg},
+            {"name": signup_label, "value": game_url},
+        ]
 
     if game.status == "closed":
         for field in fields:
@@ -165,6 +185,21 @@ def build_annonce_details_embed(
         Tuple of (embed dict, game channel ID).
     """
     game_url = f"{SITE_BASE_URL}/annonces/{game.slug}"
+
+    if game.type == "salon":
+        embed = {
+            "title": "Tout est prêt.",
+            "color": EMBED_COLOR_BLUE,
+            "description": (
+                f"<@{game.gm_id}> voici ton salon {game.name} et voici le lien [vers l'annonce]({game_url}).\n"
+                f"Le rôle associé est <@&{game.role}>.\n\n"
+                f"Quelques petits rappels :\n"
+                f"- Le règlement du {current_app.config['DISCORD_GUILD_NAME']} s'applique aussi ici.\n"
+                f"- Notifie les membres **uniquement avec le rôle** mentionné plus haut, et non pas `@everyone` ou `@here`.\n"
+                f"- Le bouton **Signaler** sur QuestMaster te permet de contacter les admins en cas de problème concernant le salon."
+            ),
+        }
+        return embed, game.channel
 
     embed = {
         "title": "Tout est prêt.",

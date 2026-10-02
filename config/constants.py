@@ -6,7 +6,13 @@ import os
 GAME_TYPE_ONESHOT = "oneshot"
 GAME_TYPE_CAMPAIGN = "campaign"
 GAME_TYPE_VIDEOGAME = "videogame"
-GAME_TYPES = (GAME_TYPE_ONESHOT, GAME_TYPE_CAMPAIGN, GAME_TYPE_VIDEOGAME)
+GAME_TYPE_SALON = "salon"
+GAME_TYPES = (GAME_TYPE_ONESHOT, GAME_TYPE_CAMPAIGN, GAME_TYPE_VIDEOGAME, GAME_TYPE_SALON)
+
+# Permanent games/salons have no date nor duration
+GAME_LENGTH_PERMANENT = "Permanent"
+# Salons have no player limit: use a capacity that is never reached
+SALON_PARTY_SIZE = 10000
 
 # Game Status
 GAME_STATUS_DRAFT = "draft"

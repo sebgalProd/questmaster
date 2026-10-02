@@ -27,8 +27,12 @@ class ChannelService:
     def get_category(self, game_type: str) -> Channel:
         """Get the smallest category for a game type.
 
+        Types without a dedicated category (videogame, salon) fall back to the
+        oneshot categories, so that publishing works before an admin has
+        registered a category for them.
+
         Args:
-            game_type: Type of game (oneshot, campaign).
+            game_type: Type of game (oneshot, campaign, videogame, salon).
 
         Returns:
             Channel category with smallest size.
@@ -37,6 +41,9 @@ class ChannelService:
             NotFoundError: If no category found for type.
         """
         category = self.repo.get_smallest_by_type(game_type)
+        if not category and game_type in ("videogame", "salon"):
+            logger.warning(f"No channel category for type '{game_type}', using oneshot category")
+            category = self.repo.get_smallest_by_type("oneshot")
         if not category:
             raise NotFoundError(
                 f"No channel category found for type '{game_type}'",

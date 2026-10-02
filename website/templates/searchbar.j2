@@ -1,7 +1,7 @@
 {% set is_my_games_view = request.path.startswith('/mes_') %}
 {% set has_status_filter = request.args.get('open') or request.args.get('closed') or request.args.get('archived') or
 request.args.get('draft') %}
-{% set has_type_filter = request.args.get('oneshot') or request.args.get('campaign') or request.args.get('videogame') %}
+{% set has_type_filter = request.args.get('oneshot') or request.args.get('campaign') or request.args.get('videogame') or request.args.get('salon') %}
 {% set has_restriction_filter = request.args.get('all') or request.args.get('16+') or request.args.get('18+') %}
 <div class="collapse" id="searchBar">
   <div class="p-4">
@@ -41,7 +41,7 @@ request.args.get('draft') %}
         </div>
       </div>
       <div class="row">
-        <div class="col-sm-3 pb-2">
+        <div class="col-sm-auto pb-2">
           <div class="btn-group me-2">
             <input type="checkbox" class="btn-check" id="oneshot" autocomplete="off" name="oneshot" {% if
               request.args.get('oneshot') or not has_type_filter %}checked{% endif %}>
@@ -52,6 +52,9 @@ request.args.get('draft') %}
             <input type="checkbox" class="btn-check" id="videogame" autocomplete="off" name="videogame" {% if
               request.args.get('videogame') or not has_type_filter %}checked{% endif %}>
             <label class="btn btn-sm btn-outline-secondary" for="videogame">Jeux vidéo</label>
+            <input type="checkbox" class="btn-check" id="salon" autocomplete="off" name="salon" {% if
+              request.args.get('salon') or not has_type_filter %}checked{% endif %}>
+            <label class="btn btn-sm btn-outline-warning" for="salon">Salons</label>
           </div>
         </div>
         <div class="col-sm-4 pb-2">

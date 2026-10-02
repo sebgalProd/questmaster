@@ -36,16 +36,25 @@
                   color: {{ text_color(hex_color(game.special_event.color)) }};" class="badge">{{
                   game.special_event.name }}</span>
                 {% endif %}
-                {% if game.type == 'campaign' %}<strong class="text-primary">Campagne</strong>{% else %}<strong
+                {% if game.type == 'salon' %}
+                <strong class="text-warning">Salon</strong> créé par <strong>{{ game.gm.name }}</strong>
+                {% else %}
+                {% if game.type == 'campaign' %}<strong class="text-primary">Campagne</strong>{% elif game.type ==
+                'videogame' %}<strong class="text-secondary">Jeu vidéo</strong>{% else %}<strong
                   class="text-success">Oneshot</strong>{% endif %} <strong>{{ game.system.name or 'Système inconnu'
                   }}</strong> par <strong>{{ game.gm.name }}</strong> {% if game.vtt %} sur <strong>{{ game.vtt.name
                   }}</strong>{% endif %}
+                {% endif %}
               </div>
               <div>
+                {% if game.permanent or not game.date %}
+                <strong><i class="bi bi-infinity"></i> Permanent</strong>
+                {% else %}
                 <strong>{{ game.date|format_datetime }}</strong> - {{ game.length }} x {{ game.session_length }}h
                 {% if game.length != "1 session" or game.frequency %}{% if game.frequency == "weekly" %}Hebdomadaire{%
                 elif game.frequency == "bi-weekly"
                 %}Une semaine sur deux{% elif game.frequency == "monthly" %}Mensuelle{% else %}Autre{%endif%}{%endif%}
+                {% endif %}
               </div>
             </div>
             <div class="description-section">
@@ -62,6 +71,7 @@
             {% endif %}
           </div>
           <div class="info-bottom">
+            {% if game.type != 'salon' %}
             <div class="classification">
               <h6>Classification</h6>
               <div class="classification-columns">
@@ -91,6 +101,7 @@
                 </div>
               </div>
             </div>
+            {% endif %}
             <div class="bottom-subsection">
               <div class="restrictions">
                 <h6>Avertissement : {% if game.restriction == 'all' %}
@@ -105,6 +116,7 @@
                   }}</span> {% endfor
                 %}
               </div>
+              {% if game.type != 'salon' %}
               <div class="ambience">
                 <h6>Ambiance :</h6>
                 {% for ambience in game.ambience %}
@@ -119,6 +131,7 @@
                 {% endif %}
                 {% endfor %}
               </div>
+              {% endif %}
             </div>
           </div>
         </div>
@@ -127,9 +140,13 @@
         <div class="player-panel">
           <div id="playerListCard" class="player-list-card">
             <div class="card-header text-center">
+              {% if game.type == 'salon' %}
+              {{ game.players|length }}<br />Membre{{ 's' if game.players|length > 1 }}
+              {% else %}
               {{ game.players|length }}/{{ game.party_size }}<br />Joueur·euses<br />{% if game.party_selection and
               not game.status == "closed"%}(sur
               sélection){% endif %}
+              {% endif %}
             </div>
             <div class="card-body">
               {% for player in game.players %}
@@ -152,7 +169,7 @@
               {% else %}
               {% set total_slots = game.party_size %}
               {% endif %}
-              {% set empty_slots = total_slots - player_count %}
+              {% set empty_slots = 0 if game.type == 'salon' else total_slots - player_count %}
               {% for _ in range(empty_slots) %}
               <div class="player" style="opacity: 0.4;">
                 <img class="empty-seat" />
@@ -166,6 +183,7 @@
               </div>
               {% endif %}
             </div>
+            {% if game.type != 'salon' %}
             <div class="card-footer text-center">
               <span class="badge badge-dynamic ">
                 {% if game.xp == "beginners" %}Réservé aux débutants{% elif game.xp == "seasoned" %}Interdit aux
@@ -179,6 +197,7 @@
                 game.characters == "pregen" %}prétirés{% else %}à faire seul·e ou avec le·a MJ{% endif %}
               </span>
             </div>
+            {% endif %}
           </div>
           <div class="actions mt-2">
             {% if request.path == '/demo/inscription/' or (payload['user_id'] != game.gm.id and game.status == "open")
@@ -186,11 +205,11 @@
             <form method="post" action="/annonces/{{ game.slug }}/inscription/">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <span class="d-inline-block d-grid" data-bs-toggle="tooltip"
-                data-bs-title="{% if not payload.get('user_id') %}Vous devez vous connecter pour pouvoir vous inscrire.{% else %}S'inscrire à la partie.{% endif %}">
+                data-bs-title="{% if not payload.get('user_id') %}Vous devez vous connecter pour pouvoir vous inscrire.{% elif game.type == 'salon' %}Rejoindre le salon et l'afficher sur Discord.{% else %}S'inscrire à la partie.{% endif %}">
                 {% if not is_player %}
                 <button type="submit" class="btn btn-success signup-btn" id="signup-btn" {% if not
                   payload.get('user_id') or (payload['user_id']==game.gm.id) %}disabled{% endif %}>
-                  <i class="bi bi-check-circle"></i> S'inscrire <span id="signup-timer"></span>
+                  <i class="bi bi-check-circle"></i> {% if game.type == 'salon' %}Rejoindre le salon{% else %}S'inscrire{% endif %} <span id="signup-timer"></span>
                 </button>
                 {% endif %}
               </span>
@@ -200,7 +219,7 @@
             ["archived", "draft"]
             %}
             <span class="d-inline-block d-grid" data-bs-toggle="tooltip"
-              data-bs-title="Accéder directement au salon de la partie.">
+              data-bs-title="Accéder directement au salon{% if game.type != 'salon' %} de la partie{% endif %}.">
               <a href="https://discord.com/channels/{{ DISCORD_GUILD_ID }}/{{ game.channel }}" type="button"
                 class="btn btn-primary" id="channel-btn">
                 <i class="bi bi-discord"></i> Discuter
@@ -233,6 +252,7 @@
               </span>
               {% endif %}
               {% endif %}
+              {% if game.type != 'salon' %}
               <span class="d-inline-block d-grid" data-bs-toggle="tooltip"
                 data-bs-title="Ajouter une session au calendrier et notifier le channel de partie.{% if game.status == 'draft' %} Désactivé sur les brouillons.{% endif %}">
                 <button id="addSessionButton" type="button"
@@ -241,6 +261,7 @@
                   <i class="bi bi-plus-circle"></i> Ajouter une session
                 </button>
               </span>
+              {% endif %}
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               {% if game.status != 'archived' %}
               {% if game.status != 'draft' and not game.msg_id and game.players|length < game.party_size %} <span
@@ -295,6 +316,7 @@
         {% endif %}
       </div>
     </div>
+    {% if game.type != 'salon' %}
     <div id="sessions-list" class="sessions-list">
       <h3 class="text-center">Sessions</h3>
       {% if game.sessions %}
@@ -339,6 +361,7 @@
         {% endif %}
       </div>
     </div>
+    {% endif %}
   </div>
   {% if (payload['user_id'] == game.gm.id or payload['is_admin']) and request.path != '/demo/inscription/' %}
   <div id="event-list" class="mt-5">

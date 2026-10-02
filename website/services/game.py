@@ -12,7 +12,10 @@ from config.constants import (
     BADGE_CAMPAIGN_ID,
     BADGE_OS_GM_ID,
     BADGE_OS_ID,
+    GAME_LENGTH_PERMANENT,
+    GAME_TYPE_SALON,
     PLAYER_ROLE_PERMISSION,
+    SALON_PARTY_SIZE,
 )
 from website.exceptions import (
     DiscordAPIError,
@@ -153,6 +156,51 @@ class GameService:
 
         return game_type, special_event_id
 
+    @staticmethod
+    def _apply_form_fields(game: Game, data: dict, game_type: str) -> None:
+        """Set the schedule and game-specific fields from form data.
+
+        Salons are always permanent and have no system, VTT, player limit
+        or character creation. Permanent games have no date nor duration.
+
+        Args:
+            game: Game instance to update in place.
+            data: Form data dictionary.
+            game_type: Effective game type (oneshot, campaign, videogame, salon).
+        """
+        from config.constants import DEFAULT_TIMEFORMAT
+
+        is_salon = game_type == GAME_TYPE_SALON
+        game.permanent = is_salon or "permanent" in data
+
+        if game.permanent:
+            game.date = None
+            game.session_length = None
+            game.length = GAME_LENGTH_PERMANENT
+            game.frequency = None
+        else:
+            game.date = datetime.strptime(data["date"], DEFAULT_TIMEFORMAT)
+            game.session_length = data["session_length"]
+            game.length = data["length"]
+            game.frequency = data.get("frequency") or None
+
+        if is_salon:
+            game.system_id = None
+            game.vtt_id = None
+            game.party_size = SALON_PARTY_SIZE
+            game.party_selection = False
+            game.xp = "all"
+            game.characters = None
+        else:
+            if not data.get("system"):
+                raise ValidationError("Vous devez choisir un système de jeu.", field="system")
+            game.system_id = data["system"]
+            game.vtt_id = data.get("vtt") or None
+            game.party_size = data["party_size"]
+            game.party_selection = "party_selection" in data
+            game.xp = data["xp"]
+            game.characters = data["characters"]
+
     def create(
         self,
         data: dict,
@@ -175,13 +223,13 @@ class GameService:
             ValidationError: If data is invalid.
             DiscordAPIError: If Discord resource creation fails.
         """
-        from config.constants import DEFAULT_TIMEFORMAT
         from website.utils.form_parsers import (
             get_ambience,
             get_classification,
             parse_restriction_tags,
         )
 
+        game = None
         try:
             if len(data["name"]) > 100:
                 raise ValidationError(
@@ -200,27 +248,18 @@ class GameService:
                 name=data["name"],
                 type=game_type,
                 special_event_id=special_event_id,
-                length=data["length"],
                 gm_id=gm_id,
-                system_id=data["system"],
-                vtt_id=data.get("vtt") or None,
                 description=data["description"],
                 restriction=data["restriction"],
-                party_size=data["party_size"],
-                xp=data["xp"],
-                date=datetime.strptime(data["date"], DEFAULT_TIMEFORMAT),
-                session_length=data["session_length"],
-                frequency=data.get("frequency") or None,
-                characters=data["characters"],
                 classification=get_classification(),
                 ambience=get_ambience(data),
                 complement=data.get("complement"),
                 status=status,
                 img=data.get("img"),
-                party_selection="party_selection" in data,
                 create_voice="create_voice" in data,
                 restriction_tags=parse_restriction_tags(data),
             )
+            self._apply_form_fields(game, data, game_type)
 
             # Generate unique slug
             game.slug = self.generate_slug(data["name"], gm.slug_name)
@@ -254,7 +293,7 @@ class GameService:
             db.session.rollback()
             logger.error(f"Failed to create game: {e}", exc_info=True)
             # Rollback Discord resources if they were created
-            if create_resources and hasattr(game, "role"):
+            if create_resources and game is not None and hasattr(game, "role"):
                 self._rollback_discord_resources(game)
             raise
 
@@ -267,18 +306,23 @@ class GameService:
         Raises:
             DiscordAPIError: If Discord operations fail.
         """
-        # Create initial game session (skip if already committed from a previous failed attempt)
-        expected_start = game.date
-        expected_end = game.date + timedelta(hours=float(game.session_length))
-        if not any(s.start == expected_start for s in game.sessions):
-            self.session_service.create(game, expected_start, expected_end)
-            logger.info("Initial game session created.")
+        # Create initial game session (skip if already committed from a previous failed attempt).
+        # Permanent games and salons have no date, hence no initial session.
+        if game.permanent or game.date is None:
+            logger.info("Permanent game or salon, no initial session created.")
         else:
-            logger.info("Initial game session already exists, skipping creation.")
+            expected_start = game.date
+            expected_end = game.date + timedelta(hours=float(game.session_length))
+            if not any(s.start == expected_start for s in game.sessions):
+                self.session_service.create(game, expected_start, expected_end)
+                logger.info("Initial game session created.")
+            else:
+                logger.info("Initial game session already exists, skipping creation.")
 
         # Create Discord role
+        role_prefix = "Membre_" if game.is_salon else "PJ_"
         game.role = self.discord.create_role(
-            name="PJ_" + game.slug,
+            name=role_prefix + game.slug,
             permissions=PLAYER_ROLE_PERMISSION,
             color=Game.COLORS[game.type],
         )["id"]
@@ -307,7 +351,9 @@ class GameService:
                 role_id=game.role,
                 gm_id=game.gm_id,
             )["id"]
-            logger.info(f"Voice channel created with ID: {game.voice_channel_id} in category {voice_parent_id}")
+            logger.info(
+                f"Voice channel created with ID: {game.voice_channel_id} in category {voice_parent_id}"
+            )
 
         # Post and pin initial message in the game channel
         msg_id = self.discord.send_game_embed(game, embed_type="annonce_details")
@@ -345,7 +391,6 @@ class GameService:
             NotFoundError: If game doesn't exist.
             ValidationError: If data is invalid.
         """
-        from config.constants import DEFAULT_TIMEFORMAT
         from website.utils.form_parsers import (
             get_ambience,
             get_classification,
@@ -369,24 +414,15 @@ class GameService:
                 game.name = data["name"]
 
             # Update fields
-            game.system_id = data["system"]
-            game.vtt_id = data.get("vtt") or None
             game.description = data["description"]
-            game.date = datetime.strptime(data["date"], DEFAULT_TIMEFORMAT)
-            game.length = data["length"]
-            game.party_size = data["party_size"]
-            game.party_selection = "party_selection" in data
             game.create_voice = "create_voice" in data
-            game.xp = data["xp"]
-            game.session_length = data["session_length"]
-            game.frequency = data.get("frequency") or None
-            game.characters = data["characters"]
             game.classification = get_classification()
             game.ambience = get_ambience(data)
             game.complement = data.get("complement")
             game.img = data.get("img")
             game.restriction = data["restriction"]
             game.restriction_tags = parse_restriction_tags(data)
+            self._apply_form_fields(game, data, game.type)
 
             db.session.commit()
             log_game_event(
@@ -602,7 +638,9 @@ class GameService:
         if game.voice_channel_id:
             try:
                 self.discord.delete_channel(game.voice_channel_id)
-                logger.info(f"Game {game.id} voice channel {game.voice_channel_id} has been deleted")
+                logger.info(
+                    f"Game {game.id} voice channel {game.voice_channel_id} has been deleted"
+                )
             except DiscordAPIError as e:
                 logger.warning(f"Failed to delete voice channel for game {game.id}: {e}")
 

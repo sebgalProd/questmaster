@@ -72,3 +72,30 @@ if ($(window).width() < 1024) {
       labelSpan.textContent = labels[this.value];
     });
   });
+// Salon and permanent modes: hide fields that do not apply.
+// Hidden fields are disabled so that they are neither validated nor submitted.
+function setFieldsVisible(container, visible) {
+    container.style.display = visible ? '' : 'none';
+    container.querySelectorAll('input, select, textarea').forEach(field => {
+        field.disabled = !visible;
+    });
+}
+
+function updateFormMode() {
+    const checkedType = document.querySelector('input[name="type"]:checked');
+    const isSalon = checkedType && checkedType.value === 'salon';
+    const permanentSwitch = document.getElementById('permanent');
+    const isPermanent = isSalon || (permanentSwitch && permanentSwitch.checked);
+
+    document.querySelectorAll('.game-only').forEach(el => setFieldsVisible(el, !isSalon));
+    setFieldsVisible(document.getElementById('scheduleFields'), !isPermanent);
+    document.getElementById('permanentRow').style.display = isSalon ? 'none' : '';
+    document.getElementById('descriptionLabel').textContent =
+        isSalon ? 'Description du salon :' : 'Description du scénario :';
+}
+
+document.querySelectorAll('input[name="type"]').forEach(radio => {
+    radio.addEventListener('change', updateFormMode);
+});
+document.getElementById('permanent').addEventListener('change', updateFormMode);
+updateFormMode();

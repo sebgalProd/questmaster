@@ -842,3 +842,106 @@ class TestMyGames:
         body = response.data.decode()
         assert response.status_code == 200
         assert "Mes parties en cours" in body
+
+
+# -- Permanent games and salons --------------------------------------------
+
+
+class TestPermanentAndSalon:
+    """Creation and display of permanent games and salons."""
+
+    def test_create_salon_without_game_fields(
+        self, logged_in_admin, mock_discord_lookups, mock_csrf, mock_discord_service, db_session
+    ):
+        data = {
+            "name": "contre-les-coups-de-mou",
+            "type": "salon",
+            "gm_id": TEST_ADMIN_USER_ID,
+            "description": "Pour poster des trucs rigolos ou sympas.",
+            "restriction": "all",
+            "restriction_tags": "[]",
+            "complement": "",
+            "img": "",
+            "action": "draft",
+        }
+        response = logged_in_admin.post("/annonce/", data=data, follow_redirects=True)
+        body = response.data.decode()
+        assert response.status_code == 200
+        assert "Brouillon" in body
+        assert "Permanent" in body
+        assert "Salon" in body
+
+    def test_create_permanent_game(
+        self,
+        logged_in_admin,
+        mock_discord_lookups,
+        mock_csrf,
+        mock_discord_service,
+        db_session,
+        default_system,
+        default_vtt,
+    ):
+        data = _game_form_data(default_system.id, default_vtt.id, permanent="on")
+        for key in ("date", "length", "session_length"):
+            data.pop(key)
+        response = logged_in_admin.post("/annonce/", data=data, follow_redirects=True)
+        body = response.data.decode()
+        assert response.status_code == 200
+        assert "Permanent" in body
+
+    def test_salon_details_page(self, logged_in_user, mock_discord_lookups, db_session):
+        salon = GameFactory(
+            db_session,
+            type="salon",
+            status="open",
+            permanent=True,
+            date=None,
+            session_length=None,
+            length="Permanent",
+            system_id=None,
+            party_size=10000,
+            characters=None,
+            classification={},
+            ambience=[],
+        )
+        response = logged_in_user.get(f"/annonces/{salon.slug}/")
+        body = response.data.decode()
+        assert response.status_code == 200
+        assert "Rejoindre le salon" in body
+        assert "Membre" in body
+        assert "10000" not in body
+        assert "sessions-list" not in body
+
+    def test_salon_and_permanent_game_in_search_and_edit(
+        self, logged_in_admin, mock_discord_lookups, db_session, default_system
+    ):
+        salon = GameFactory(
+            db_session,
+            type="salon",
+            status="open",
+            permanent=True,
+            date=None,
+            session_length=None,
+            length="Permanent",
+            system_id=None,
+            party_size=10000,
+        )
+        permanent = GameFactory(
+            db_session,
+            status="open",
+            permanent=True,
+            date=None,
+            session_length=None,
+            length="Permanent",
+            system_id=default_system.id,
+        )
+        response = logged_in_admin.get("/annonces/")
+        body = response.data.decode()
+        assert response.status_code == 200
+        assert salon.name in body
+        assert permanent.name in body
+
+        for game in (salon, permanent):
+            response = logged_in_admin.get(f"/annonces/{game.slug}/editer/")
+            assert response.status_code == 200
+            assert 'id="permanent"' in response.data.decode()

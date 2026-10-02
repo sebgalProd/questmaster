@@ -174,7 +174,7 @@ class GameSessionService:
 
         for session in sessions:
             game = session.game
-            system = game.system.name
+            system = game.system.name if game.system else "Salon"
             slug = game.slug
             entry = {"name": game.name, "gm": game.gm.name, "count": 1}
 
@@ -202,7 +202,6 @@ class GameSessionService:
             "campaign_games": campaign_games,
             "gm_names": gm_names,
         }
-
 
     @staticmethod
     def _has_conflict(game, start_dt, end_dt, exclude_session_id=None):

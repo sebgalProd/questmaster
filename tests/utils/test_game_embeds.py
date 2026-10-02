@@ -56,6 +56,7 @@ def _make_game(**overrides):
         "gm": SimpleNamespace(name="TestGM"),
         "system": SimpleNamespace(name="D&D 5e"),
         "special_event": None,
+        "permanent": False,
     }
     defaults.update(overrides)
     return SimpleNamespace(**defaults)
@@ -230,7 +231,7 @@ class TestBuildEmbedFields:
             "Date",
             "Durée",
             "Avertissement",
-            "Pour s'inscrire :",
+            "Pour s'inscrire et afficher le salon caché :",
         ]
 
     def test_gm_name_in_fields(self):
@@ -339,6 +340,11 @@ class TestBuildAnnonceEmbed:
 
 
 class TestBuildAnnonceDetailsEmbed:
+    @pytest.fixture(autouse=True)
+    def _app_context(self, embed_app):
+        with embed_app.app_context():
+            yield
+
     def test_returns_tuple_with_game_channel(self):
         game = _make_game(channel="game_ch_123")
         _, channel_id = build_annonce_details_embed(game)
@@ -512,3 +518,37 @@ class TestBuildAlertEmbed:
             game = _make_game(slug="alert-game")
             embed, _ = build_alert_embed(game, player="p", alert_message="msg")
             assert f"{SITE_BASE_URL}/annonces/alert-game" in embed["description"]
+
+
+# ---------------------------------------------------------------------------
+# Permanent games and salons
+# ---------------------------------------------------------------------------
+
+
+class TestPermanentAndSalonEmbeds:
+    def test_permanent_game_shows_permanent_date_and_no_duration(self):
+        game = _make_game(permanent=True, date=None, length="Permanent")
+        fields = _build_embed_fields(game, "OS", "msg")
+        values = {f["name"]: f["value"] for f in fields}
+        assert values["Date"] == "Permanent"
+        assert "Durée" not in values
+
+    def test_salon_fields(self):
+        game = _make_game(type="salon", permanent=True, date=None, system=None)
+        fields = _build_embed_fields(game, _get_session_type(game), "msg")
+        names = [f["name"] for f in fields]
+        assert names == [
+            "Créé par",
+            "Type",
+            "Avertissement",
+            "Pour s'inscrire et afficher le salon caché :",
+        ]
+
+    def test_salon_session_type(self):
+        assert _get_session_type(_make_game(type="salon")) == "Salon"
+
+    def test_salon_details_embed(self, embed_app):
+        with embed_app.app_context():
+            game = _make_game(type="salon")
+            embed, _ = build_annonce_details_embed(game)
+            assert "voici ton salon" in embed["description"]

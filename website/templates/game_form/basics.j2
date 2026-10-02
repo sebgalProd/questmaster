@@ -9,7 +9,7 @@
       </div>
     </div>
   </div>
-  <div class="row">
+  <div class="row game-only">
     <div class="mb-2">
       <label for="system" class="form-label"><strong>Système :</strong></label>
       <select class="form-select select2" id="system" name="system" aria-describedby="Système" required>
@@ -23,7 +23,7 @@
       </div>
     </div>
   </div>
-  <div class="row">
+  <div class="row game-only">
     <div class="mb-2">
       <label for="vtt" class="form-label"><strong>VTT :</strong></label>
       <select class="form-select" name="vtt" id="vtt" aria-describedby="VTT">
@@ -36,7 +36,7 @@
   </div>
   <div class="row">
     <div class="mb-2">
-      <label for="description" class="form-label"><strong>Description du scénario :</strong></label>
+      <label for="description" class="form-label"><strong id="descriptionLabel">Description du scénario :</strong></label>
       <textarea class="form-control" name="description" id="description" rows="14" spellcheck="true"
         required>{% if game %}{{game.description}}{% endif %}</textarea>
       <div class="invalid-feedback">

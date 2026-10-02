@@ -197,7 +197,7 @@ class GameRepository(BaseRepository[Game]):
                 query = query.filter(or_(*status_filters))
 
         # Type filter
-        game_type = filters.get("game_type", ["oneshot", "campaign"])
+        game_type = filters.get("game_type", ["oneshot", "campaign", "videogame", "salon"])
         if game_type:
             query = query.filter(Game.type.in_(game_type))
 
@@ -237,10 +237,11 @@ class GameRepository(BaseRepository[Game]):
             (Game.status == "closed", 2),
             (Game.status == "archived", 3),
         )
-        is_future = case((Game.date >= now, 0), else_=1)
+        # Permanent games and salons (no date) are sorted with upcoming games
+        is_future = case((Game.date.is_(None), 0), (Game.date >= now, 0), else_=1)
         time_distance = func.abs(func.extract("epoch", Game.date - now))
 
-        query = query.order_by(status_order, is_future, time_distance)
+        query = query.order_by(status_order, is_future, time_distance.nulls_last())
 
         # Get total count before pagination
         total = query.count()

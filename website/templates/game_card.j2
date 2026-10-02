@@ -14,7 +14,7 @@
       background-color: var(--bs-dark);
       color: white;
     {% else %}
-      background-color: {% if game.type == 'campaign' %}var(--bs-primary){% elif game.type == 'videogame' %}var(--bs-secondary){% else %}var(--bs-success){% endif %};
+      background-color: {% if game.type == 'campaign' %}var(--bs-primary){% elif game.type == 'videogame' %}var(--bs-secondary){% elif game.type == 'salon' %}var(--bs-orange){% else %}var(--bs-success){% endif %};
       color: white;
     {% endif %}
   ">
@@ -31,10 +31,10 @@
     <div class="card-body">
       <div class="row">
         <div class="col-6">
-          {% if game.type=='campaign' %}<i class="bi bi-book"></i>&nbsp; Campagne{% elif game.type=='videogame' %}<i class="bi bi-controller"></i>&nbsp; Jeu vidéo{% else %}<i class="bi bi-dice-5"></i>&nbsp; One Shot{% endif %}
+          {% if game.type=='campaign' %}<i class="bi bi-book"></i>&nbsp; Campagne{% elif game.type=='videogame' %}<i class="bi bi-controller"></i>&nbsp; Jeu vidéo{% elif game.type=='salon' %}<i class="bi bi-chat-dots"></i>&nbsp; Salon{% else %}<i class="bi bi-dice-5"></i>&nbsp; One Shot{% endif %}
         </div>
         <div class="col-6 text-truncate">
-          <i class="bi bi-joystick"></i>&nbsp; {{ game.system.name }}
+          {% if game.system %}<i class="bi bi-joystick"></i>&nbsp; {{ game.system.name }}{% endif %}
         </div>
       </div>
       <div class="row">
@@ -42,16 +42,21 @@
           <i class="bi bi-person"></i>&nbsp; {{ game.gm.name }}
         </div>
         <div class="col-6">
-          <i class="bi bi-calendar"></i>&nbsp; {{ game.date|format_datetime }}
+          {% if game.permanent or not game.date %}<i class="bi bi-infinity"></i>&nbsp; Permanent{% else %}<i
+            class="bi bi-calendar"></i>&nbsp; {{ game.date|format_datetime }}{% endif %}
         </div>
       </div>
       <div class="row">
         <div class="col-6">
+          {% if game.type == 'salon' %}
+          <i class="bi bi-people"></i>&nbsp; {{ game.players|length }} membre{{ 's' if game.players|length > 1 }}
+          {% else %}
           <i class="bi bi-people"></i>&nbsp; {{ game.players|length }}/{{ game.party_size }}
           {% if game.party_selection %}(sur sélection){% endif %}
+          {% endif %}
         </div>
         <div class="col-6">
-          <i class="bi bi-clock-history"></i>&nbsp; {{ game.length }}
+          {% if not game.permanent %}<i class="bi bi-clock-history"></i>&nbsp; {{ game.length }}{% endif %}
         </div>
       </div>
       <a href="{% if request.path=='/demo/' %}#{% else %}/annonces/{{game.slug}}/{% endif %}"

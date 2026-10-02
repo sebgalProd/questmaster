@@ -104,7 +104,7 @@ def normalize_search_defaults(
     if not status:
         status = default_status or ["open"]
     if not game_type:
-        game_type = default_type or ["oneshot", "campaign", "videogame"]
+        game_type = default_type or ["oneshot", "campaign", "videogame", "salon"]
     if not restriction:
         restriction = default_restriction or ["all", "16+", "18+"]
     return status, game_type, restriction
@@ -138,7 +138,7 @@ def get_filtered_games(
         request_args_source, ["open", "closed", "archived", "draft"]
     )
     game_type, type_args = parse_multi_checkbox_filter(
-        request_args_source, ["oneshot", "campaign", "videogame"]
+        request_args_source, ["oneshot", "campaign", "videogame", "salon"]
     )
     restriction, restriction_args = parse_multi_checkbox_filter(
         request_args_source, ["all", "16+", "18+"]
@@ -173,14 +173,15 @@ def get_filtered_games(
         (Game.status == "closed", 2),
         (Game.status == "archived", 3),
     )
-    is_future = case((Game.date >= now, 0), else_=1)
+    # Permanent games and salons (no date) are sorted with upcoming games
+    is_future = case((Game.date.is_(None), 0), (Game.date >= now, 0), else_=1)
     time_distance = func.abs(func.extract("epoch", Game.date - now))
 
     page = request_args_source.get("page", 1, type=int)
     query = base_query or Game.query
     games = (
         query.filter(*queries)
-        .order_by(status_order, is_future, time_distance)
+        .order_by(status_order, is_future, time_distance.nulls_last())
         .paginate(page=page, per_page=GAMES_PER_PAGE, error_out=False)
     )
 

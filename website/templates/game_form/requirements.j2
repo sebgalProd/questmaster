@@ -16,6 +16,10 @@
             %}{% if game.type=='videogame' %}checked{% endif %} {% if game.status !="draft" and not clone %}disabled{%
             endif%}{% endif %}>
           <label class="btn btn-outline-secondary btn-sm" for="videogame">Jeu vidéo</label>
+          <input type="radio" class="btn-check" name="type" value="salon" id="salon" autocomplete="off" {% if game
+            %}{% if game.type=='salon' %}checked{% endif %} {% if game.status !="draft" and not clone %}disabled{%
+            endif%}{% endif %}>
+          <label class="btn btn-outline-warning btn-sm" for="salon">Salon</label>
           {% if payload.active_events %}
           {% for event in payload.active_events %}
           {% set color = hex_color(event.color) %}
@@ -36,11 +40,22 @@
       </div>
     </div>
   </div>
+  <div class="row" id="permanentRow">
+    <div class="mb-2">
+      <div class="form-check form-switch">
+        <input class="form-check-input" type="checkbox" role="switch" name="permanent" id="permanent"
+          aria-checked="false" {% if game and game.permanent %}checked{% endif %}>
+        <label class="form-check-label" for="permanent"><i class="bi bi-infinity"></i> Permanent (sans date ni
+          durée)</label>
+      </div>
+    </div>
+  </div>
+  <div id="scheduleFields">
   <div class="row">
     <div id="calendarInput" class="mb-2">
       <label for="calendar" class="form-label"><strong>Date :</strong></label>
       <input id="calendar" name="date" class="flatpickr flatpickr-input active form-control" type="text"
-        autocomplete="off" {% if game %}value="{{game.date}}" {% endif %}required>
+        autocomplete="off" {% if game and game.date %}value="{{game.date}}" {% endif %}required>
       <div class="invalid-feedback">
         Vous devez entrer une date.
       </div>
@@ -60,7 +75,7 @@
           <option value="20+ sessions" {% if game and game.length=='20+ sessions' %}selected{% endif %}>20+</option>
         </select>
         <label class="input-group-text" for="session_length">session(s) de</label>
-        <input type="number" step="0.5" value="{% if game %}{{ game.session_length }}{% else %}3.5{% endif %}"
+        <input type="number" step="0.5" value="{% if game and game.session_length %}{{ game.session_length }}{% else %}3.5{% endif %}"
           class="form-control" id="session_length" name="session_length" aria-describedby="Durée moyenne de session"
           autocomplete="off" required>
         <label class="input-group-text" for="session_length">heures</label>
@@ -83,7 +98,8 @@
       </select>
     </div>
   </div>
-  <div class="row">
+  </div>
+  <div class="row game-only">
     <div class="mb-2">
       <label for="party_size" class="form-label"><strong>Nombre de joueur·euses :</strong></label>
       <input type="number" step="1" min="1" max="99" name="party_size" id="party_size" class="form-control" {% if game
@@ -95,7 +111,7 @@
   </div>
   <div class="row">
     <div class="mb-2">
-      <div class="form-check form-switch">
+      <div class="form-check form-switch game-only">
         <input class="form-check-input" type="checkbox" role="switch" name="party_selection" id="party_selection"
           aria-checked="false" {% if game and game.party_selection %}checked{% endif %}>
         <label class="form-check-label" for="party_selection">Sélection de joueur·euses</label>
@@ -107,7 +123,7 @@
       </div>
     </div>
   </div>
-  <div class="row">
+  <div class="row game-only">
     <div class="mb-2">
       <label for="xp" class="form-label"><strong>Expérience recherchée :</strong></label>
       <select class="form-select" id="xp" name="xp" aria-describedby="Expérience">
@@ -120,7 +136,7 @@
       </select>
     </div>
   </div>
-  <div class="row">
+  <div class="row game-only">
     <div class="mb-2">
       <label for="characters" class="form-label"><strong>Création des personnages :</strong></label>
       <select class="form-select" name="characters" id="characters" aria-describedby="Personnages">

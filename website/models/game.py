@@ -37,11 +37,15 @@ players_table = db.Table(
 
 class Game(db.Model):
     """
-    Represents a tabletop RPG game (oneshot or campaign).
+    Represents a game announcement (oneshot, campaign, videogame) or a salon.
+
+    A salon is a themed Discord channel that is not a game (e.g. a channel to
+    talk about bitcoin). Salons are always permanent: no date, no duration.
+    A permanent game has no date nor duration either.
     """
 
     __tablename__ = "game"
-    COLORS = {"oneshot": 0x198754, "campaign": 0x0D6EFD, "videogame": 0x9B59B6}
+    COLORS = {"oneshot": 0x198754, "campaign": 0x0D6EFD, "videogame": 0x9B59B6, "salon": 0xFD7E14}
 
     id = db.Column(db.BigInteger(), primary_key=True)
     slug = db.Column(db.String(), unique=True, index=True)
@@ -50,7 +54,7 @@ class Game(db.Model):
     length = db.Column(db.String(), nullable=False)
     gm_id = db.Column(db.String(), db.ForeignKey("user.id"), nullable=False)
     gm = db.relationship("User", back_populates="games_gm", foreign_keys=[gm_id])
-    system_id = db.Column(db.Integer(), db.ForeignKey("system.id"), nullable=False)
+    system_id = db.Column(db.Integer(), db.ForeignKey("system.id"), nullable=True)
     vtt_id = db.Column(db.Integer(), db.ForeignKey("vtt.id"), nullable=True)
     description = db.Column(db.Text(), nullable=False)
     restriction = db.Column(
@@ -62,8 +66,9 @@ class Game(db.Model):
     create_voice = db.Column(db.Boolean(), nullable=False, default=False)
     players = db.relationship("User", secondary=players_table, backref="games")
     xp = db.Column("experience", Enum(*GAME_XP, name="game_xp_enum"), default="all")
-    date = db.Column(db.DateTime, nullable=False)
-    session_length = db.Column(db.DECIMAL(2, 1), nullable=False)
+    date = db.Column(db.DateTime, nullable=True)
+    session_length = db.Column(db.DECIMAL(2, 1), nullable=True)
+    permanent = db.Column(db.Boolean(), nullable=False, default=False, server_default="false")
     frequency = db.Column("frequency", Enum(*GAME_FREQUENCIES, name="game_frequency_enum"))
     characters = db.Column("characters", Enum(*GAME_CHAR, name="game_char_enum"))
     classification = db.Column(MutableDict.as_mutable(JSONB))
@@ -109,6 +114,11 @@ class Game(db.Model):
             )
         return value
 
+    @property
+    def is_salon(self) -> bool:
+        """Return True if this announcement is a salon rather than a game."""
+        return self.type == "salon"
+
     def _serialize_relation(self, obj):
         """Helper to serialize a single related object."""
         if obj and hasattr(obj, "to_dict"):
@@ -152,6 +162,7 @@ class Game(db.Model):
             "party_size": self.party_size,
             "party_selection": self.party_selection,
             "xp": self.xp,
+            "permanent": self.permanent,
             "date": self.date.isoformat() if self.date else None,
             "session_length": (float(self.session_length) if self.session_length else None),
             "frequency": self.frequency,
@@ -222,6 +233,7 @@ class Game(db.Model):
             party_size=data.get("party_size"),
             party_selection=data.get("party_selection"),
             xp=data.get("xp"),
+            permanent=data.get("permanent", False),
             date=date_value,
             session_length=session_length_value,
             frequency=data.get("frequency"),
