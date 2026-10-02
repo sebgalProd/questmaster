@@ -13,6 +13,7 @@ dependencies = [
     "Flask-Discord==0.1.69",
     "Flask-Migrate==4.1.0",
     "Flask-SQLAlchemy==3.1.1",
+    "SQLAlchemy==2.0.49",
     "Flask-WTF==1.2.2",
     "Flask-Caching==2.3.1",
     "Flask-Admin==2.0.2",
