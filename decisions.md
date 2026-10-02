@@ -94,3 +94,17 @@ depuis QuestMaster (ex. `contre-les-coups-de-mou`, `bitcoin`, `la chouette d'or`
 
 - ~~`website/services/discord.py:371` utilise `logger` sans l'importer (erreur flake8 F821, qui
   existait déjà).~~ Corrigé ensuite (commit `fix(discord)`), avec un test.
+
+## 7. Une seule catégorie Discord pour les jeux de rôle (2026-10-02)
+
+- La catégorie « Oneshots » est supprimée sur Discord. One Shots et Campagnes vont tous dans la
+  catégorie `1501269649856139406`.
+- Dans la table `channel`, l'ID est la clé primaire : une catégorie ne peut être enregistrée
+  qu'avec **un seul type**. Plutôt que de changer le schéma, `ChannelService.get_category` utilise
+  une table de repli (`CATEGORY_FALLBACKS`) :
+  - oneshot → campaign, campaign → oneshot (les deux types de JDR partagent leurs catégories) ;
+  - videogame et salon → oneshot, puis campaign.
+- Côté admin, il suffit d'avoir une ligne `1501269649856139406` avec le type « Campagne » et de
+  supprimer la ligne de l'ancienne catégorie Oneshots.
+- Tant qu'aucune catégorie « Jeu vidéo » ou « Salon » n'est enregistrée, les jeux vidéo et les
+  salons sont eux aussi créés dans cette catégorie JDR.

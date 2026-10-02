@@ -10,6 +10,15 @@ from website.models import Channel
 from website.repositories.channel import ChannelRepository
 from website.utils.logger import logger
 
+# Categories to use when a game type has no category of its own.
+# Oneshots and campaigns are both tabletop RPGs and can share a category.
+CATEGORY_FALLBACKS = {
+    "oneshot": ("campaign",),
+    "campaign": ("oneshot",),
+    "videogame": ("oneshot", "campaign"),
+    "salon": ("oneshot", "campaign"),
+}
+
 if TYPE_CHECKING:
     from website.models import Game
     from website.services.discord import DiscordService
@@ -27,9 +36,10 @@ class ChannelService:
     def get_category(self, game_type: str) -> Channel:
         """Get the smallest category for a game type.
 
-        Types without a dedicated category (videogame, salon) fall back to the
-        oneshot categories, so that publishing works before an admin has
-        registered a category for them.
+        A type without a category of its own uses the categories of
+        another type (see ``CATEGORY_FALLBACKS``): oneshots and campaigns
+        share their categories, videogames and salons go with the RPGs
+        until an admin registers a category for them.
 
         Args:
             game_type: Type of game (oneshot, campaign, videogame, salon).
@@ -41,9 +51,12 @@ class ChannelService:
             NotFoundError: If no category found for type.
         """
         category = self.repo.get_smallest_by_type(game_type)
-        if not category and game_type in ("videogame", "salon"):
-            logger.warning(f"No channel category for type '{game_type}', using oneshot category")
-            category = self.repo.get_smallest_by_type("oneshot")
+        for fallback_type in CATEGORY_FALLBACKS.get(game_type, ()):
+            if category:
+                break
+            category = self.repo.get_smallest_by_type(fallback_type)
+            if category:
+                logger.info(f"No channel category for type '{game_type}', using '{fallback_type}'")
         if not category:
             raise NotFoundError(
                 f"No channel category found for type '{game_type}'",

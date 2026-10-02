@@ -28,6 +28,29 @@ class TestChannelService:
         with pytest.raises(NotFoundError):
             service.get_category("oneshot")
 
+    def test_oneshot_uses_campaign_category_when_none_registered(self, db_session):
+        campaign = Channel(id="campaign_cat", type="campaign", size=0)
+        mock_repo = MagicMock()
+        mock_repo.get_smallest_by_type.side_effect = lambda t: (
+            campaign if t == "campaign" else None
+        )
+        service = ChannelService(repository=mock_repo)
+        assert service.get_category("oneshot") is campaign
+
+    def test_salon_uses_campaign_category_when_no_oneshot(self, db_session):
+        campaign = Channel(id="campaign_cat", type="campaign", size=0)
+        mock_repo = MagicMock()
+        mock_repo.get_smallest_by_type.side_effect = lambda t: (
+            campaign if t == "campaign" else None
+        )
+        service = ChannelService(repository=mock_repo)
+        assert service.get_category("salon") is campaign
+
+    def test_own_category_has_priority(self, db_session):
+        service = ChannelService()
+        assert service.get_category("oneshot").type == "oneshot"
+        assert service.get_category("campaign").type == "campaign"
+
     def test_increment_size(self, db_session):
         service = ChannelService()
         channel = db_session.get(Channel, TEST_ONESHOT_CHANNEL_ID)
