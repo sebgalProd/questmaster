@@ -10,6 +10,7 @@ from website.exceptions.business import (
 )
 from website.exceptions.database import DatabaseError
 from website.exceptions.discord import DiscordAPIError, DiscordError
+from website.exceptions.steam import SteamAPIError
 from website.exceptions.validation import ValidationError
 
 __all__ = [
@@ -20,6 +21,7 @@ __all__ = [
     "DatabaseError",
     "DiscordError",
     "DiscordAPIError",
+    "SteamAPIError",
     "GameError",
     "GameFullError",
     "GameClosedError",

@@ -105,6 +105,7 @@ class User(db.Model, SerializableMixin):
         id: Discord user ID (17-21 digit string).
         name: Display name (nick or global_name), refreshed from Discord.
         username: Stable Discord username, used for slug generation.
+        steam_id: SteamID64 read from the user's Discord connections, if linked.
         games_gm: Games where this user is the GM.
         trophies: User trophy associations.
     """
@@ -117,6 +118,7 @@ class User(db.Model, SerializableMixin):
     id = db.Column(db.String(), primary_key=True)
     name = db.Column(db.String(), nullable=False, index=True)
     username = db.Column(db.String(), nullable=True)
+    steam_id = db.Column(db.String(), nullable=True)
     not_player_as_of = db.Column(db.DateTime, nullable=True)
     games_gm = db.relationship("Game", back_populates="gm")
     trophies = db.relationship("UserTrophy", back_populates="user", cascade="all, delete-orphan")
