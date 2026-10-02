@@ -4,6 +4,7 @@ from .errors import error_bp
 from .filters import format_datetime, hex_color, text_color
 from .games import game_bp
 from .health import health_bp
+from .interactions import interactions_bp
 from .misc import misc_bp
 from .stats import stats_bp
 
@@ -16,6 +17,7 @@ def register_blueprints(app):
     app.register_blueprint(error_bp)
     app.register_blueprint(stats_bp)
     app.register_blueprint(demo_bp)
+    app.register_blueprint(interactions_bp)
 
 
 def register_filters(app):
