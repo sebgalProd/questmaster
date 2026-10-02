@@ -2,14 +2,14 @@
 
 import logging
 
-from flask import g
+from flask import g, has_app_context
 
 
 class RequestLoggerAdapter(logging.LoggerAdapter):
     """Logger adapter that prepends the request trace ID to log messages."""
 
     def process(self, msg, kwargs):
-        trace_id = getattr(g, "trace_id", "no-trace-id")
+        trace_id = getattr(g, "trace_id", "no-trace-id") if has_app_context() else "no-trace-id"
         return f"[trace_id={trace_id}] {msg}", kwargs
 
 
