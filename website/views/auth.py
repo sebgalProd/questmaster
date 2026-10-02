@@ -9,6 +9,7 @@ from config.constants import SEARCH_GAMES_ROUTE
 from website.exceptions import UnauthorizedError
 from website.extensions import discord
 from website.services.user import UserService
+from website.utils.logger import logger
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -45,7 +46,7 @@ def login():
     session.permanent = True
     next_url = session.get("next_url") or request.referrer or url_for(SEARCH_GAMES_ROUTE)
     session["next_url"] = next_url
-    return discord.create_session(scope=["identify"])
+    return discord.create_session(scope=["identify", "connections"])
 
 
 @auth_bp.route("/logout/")
@@ -78,6 +79,10 @@ def callback():
         uid = discord.fetch_user().id
         user, _ = UserService().get_or_create(str(uid))
         user.refresh_roles()
+        try:
+            UserService().link_steam_from_connections(user, discord.fetch_connections())
+        except Exception as e:
+            logger.warning(f"Could not read Discord connections for user {user.id}: {e}")
         if not user.is_player:
             raise UnauthorizedError(
                 "User is not a player on the Discord server.",

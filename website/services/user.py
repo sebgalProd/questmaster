@@ -61,6 +61,26 @@ class UserService:
         user.init_on_load()
         return user, True
 
+    def link_steam_from_connections(self, user: User, connections: list) -> bool:
+        """Store the SteamID found in the user's Discord connections.
+
+        An absent Steam connection never clears an existing SteamID: the user
+        may simply have declined the "connections" permission this time.
+
+        Args:
+            user: User to update.
+            connections: Discord connections, each with ``type`` and ``id``.
+
+        Returns:
+            True if the stored SteamID changed.
+        """
+        steam = next((c for c in connections if getattr(c, "type", None) == "steam"), None)
+        if steam is None or user.steam_id == str(steam.id):
+            return False
+        user.steam_id = str(steam.id)
+        db.session.commit()
+        return True
+
     def get_all(self) -> list[User]:
         """Get all users.
 
