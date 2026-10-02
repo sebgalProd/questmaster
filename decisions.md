@@ -118,3 +118,19 @@ depuis QuestMaster (ex. `contre-les-coups-de-mou`, `bitcoin`, `la chouette d'or`
   être unique. Discord accepte deux salons de même nom, ce qui pose rarement problème puisque
   QuestMaster les retrouve par leur ID.
 - Les parties (One Shot, Campagne, Jeu vidéo) ne changent pas : `<nom>-par-<pseudo>`.
+
+## 9. Jeux Steam en commun (2026-10-02)
+
+Conception complète : `docs/superpowers/specs/2026-10-02-steam-jeux-en-commun-design.md`.
+
+- Commandes Discord reçues par HTTP sur `POST /discord/interactions/` (signature Ed25519
+  vérifiée), sans bot connecté en permanence.
+- SteamID lu dans les connexions Discord à la connexion au site (permission « connexions »).
+  Une connexion Steam absente n'efface jamais un SteamID déjà enregistré.
+- Bibliothèques gardées 6 h dans Redis (`steam:library:<steam_id>`) ; « Steam indisponible »
+  n'est jamais mis en cache.
+- `/jeux-en-commun` : auteur toujours inclus, doublons ignorés, 25 jeux au plus, triés par temps
+  de jeu cumulé puis par nom. Les membres non reliés, privés ou injoignables sont exclus et cités.
+- Commandes enregistrées sur le serveur du club seulement (`flask register-discord-commands`).
+- Au passage, le journal (`website/utils/logger.py`) ne plante plus hors d'une requête Flask : il
+  écrit `no-trace-id`.

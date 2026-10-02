@@ -126,7 +126,9 @@ def test_unknown_member_is_not_linked(client, db_session, signing_key):
         ["Invoker"], [("Robot", STATUS_NOT_LINKED)], [], 0, True
     )
     robot_id = "123456789012345678"
-    resolved = {robot_id: {"id": robot_id, "username": "robot", "global_name": "Robot", "bot": True}}
+    resolved = {
+        robot_id: {"id": robot_id, "username": "robot", "global_name": "Robot", "bot": True}
+    }
     with (
         patch("website.views.interactions.SteamService", return_value=service),
         patch("website.views.interactions.get_bot", return_value=MagicMock()),

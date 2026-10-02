@@ -53,6 +53,7 @@ class TestExceptionPackageExports:
             "DatabaseError",
             "DiscordError",
             "DiscordAPIError",
+            "SteamAPIError",
             "GameError",
             "GameFullError",
             "GameClosedError",
