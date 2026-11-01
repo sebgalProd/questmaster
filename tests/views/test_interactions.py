@@ -210,19 +210,24 @@ def test_member_names_never_ping(client, db_session, signing_key):
     assert payload["allowed_mentions"] == {"parse": []}
 
 
-def test_background_thread_closes_db_session_even_on_error():
+def test_background_thread_runs_without_app_context_error(test_app):
+    import threading
+
     from website.views import interactions
 
-    def boom():
-        raise RuntimeError("boom")
+    ran, errors = [], []
 
-    with (
-        patch.object(interactions.db.session, "remove") as remove,
-        patch.object(interactions.threading, "Thread") as thread_cls,
-    ):
-        interactions._start_background(boom)
-        runner = thread_cls.call_args.kwargs["target"]
-        with pytest.raises(RuntimeError):
-            runner()
-    remove.assert_called_once()
+    def target():
+        with test_app.app_context():
+            ran.append(True)
+
+    with patch.object(interactions.threading, "Thread") as thread_cls:
+        interactions._start_background(target)
     thread_cls.return_value.start.assert_called_once()
+
+    runner = threading.Thread(target=thread_cls.call_args.kwargs["target"])
+    with patch.object(threading, "excepthook", lambda args: errors.append(args.exc_value)):
+        runner.start()
+        runner.join()
+    assert ran == [True]
+    assert errors == []

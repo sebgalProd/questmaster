@@ -9,7 +9,7 @@ from flask import Blueprint, current_app, jsonify, request
 from config.constants import SITE_BASE_URL
 from website.bot import get_bot
 from website.exceptions import DiscordAPIError
-from website.extensions import csrf, db
+from website.extensions import csrf
 from website.services.steam import STATUS_OK, SteamService
 from website.services.user import UserService
 from website.utils.discord_signature import verify_discord_signature
@@ -48,15 +48,12 @@ def _invoker(payload: dict) -> tuple[str, str]:
 
 
 def _start_background(target, *args):
-    """Run ``target(*args)`` in a daemon thread that closes its DB session at the end."""
+    """Run ``target(*args)`` in a daemon thread.
 
-    def runner():
-        try:
-            target(*args)
-        finally:
-            db.session.remove()
-
-    threading.Thread(target=runner, daemon=True).start()
+    The target opens its own app context; Flask-SQLAlchemy removes the DB session when that
+    context tears down, even on error.
+    """
+    threading.Thread(target=target, args=args, daemon=True).start()
 
 
 def _edit_original(application_id: str, token: str, message: dict) -> None:
