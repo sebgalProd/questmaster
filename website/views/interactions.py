@@ -135,7 +135,8 @@ def _common_games(payload: dict) -> dict:
         payload["token"],
         members,
     )
-    return {"type": DEFERRED_CHANNEL_MESSAGE}
+    # Visible to the invoker only: the members cited did not ask to be compared in public
+    return {"type": DEFERRED_CHANNEL_MESSAGE, "data": {"flags": EPHEMERAL}}
 
 
 @interactions_bp.route("/discord/interactions/", methods=["POST"])

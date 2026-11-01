@@ -106,7 +106,7 @@ def test_common_games_defers_then_edits_response(client, db_session, signing_key
     ):
         response = _post(client, signing_key, _command("jeux-en-commun", options, resolved))
 
-    assert response.get_json() == {"type": 5}
+    assert response.get_json() == {"type": 5, "data": {"flags": 64}}
     members = service.common_games.call_args.args[0]
     assert [name for name, _ in members] == ["Invoker", "Admin"]
     app_id, token, payload = bot.edit_interaction_response.call_args.args

@@ -134,3 +134,14 @@ Conception complète : `docs/superpowers/specs/2026-10-02-steam-jeux-en-commun-d
 - Commandes enregistrées sur le serveur du club seulement (`flask register-discord-commands`).
 - Au passage, le journal (`website/utils/logger.py`) ne plante plus hors d'une requête Flask : il
   écrit `no-trace-id`.
+
+## 10. `/jeux-en-commun` plus discret (2026-11-01)
+
+Des membres trouvaient la commande intrusive.
+
+- La réponse n'est visible que par l'auteur de la commande. Les membres cités n'ont pas demandé à
+  être comparés devant tout le salon ; l'auteur partage le résultat s'il le souhaite.
+- Les heures de jeu ne sont plus affichées : à deux, le total « à vous tous » moins ses propres
+  heures donnait celles de l'autre. Le tri par temps de jeu cumulé reste.
+- Pas encore d'inscription volontaire ni de commande pour se retirer : à faire si des membres le
+  demandent (aujourd'hui, la seule sortie est de passer ses jeux en privé dans Steam).

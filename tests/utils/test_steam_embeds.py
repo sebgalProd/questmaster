@@ -26,6 +26,13 @@ def test_embed_lists_games_with_store_links():
     assert "footer" not in embed
 
 
+def test_embed_does_not_reveal_playtime():
+    result = CommonGamesResult(["Alice", "Bob"], [], _games(2), 2, False)
+    description = build_common_games_payload(result)["embeds"][0]["description"]
+    assert " h " not in description
+    assert "à vous tous" not in description
+
+
 def test_list_is_cut_at_25_with_total():
     result = CommonGamesResult(["A", "B"], [], _games(47), 47, False)
     embed = build_common_games_payload(result)["embeds"][0]

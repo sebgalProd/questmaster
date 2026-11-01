@@ -33,8 +33,8 @@ def _excluded_lines(excluded) -> list[str]:
 
 def _game_line(game: dict) -> str:
     name = _truncate(game["name"], MAX_GAME_NAME).replace("[", "(").replace("]", ")")
-    hours = game["playtime"] // 60
-    return f"• [{name}]({STORE_URL.format(appid=game['appid'])}) — {hours} h à vous tous"
+    # No playtime: with two members, the total would reveal the other one's hours
+    return f"• [{name}]({STORE_URL.format(appid=game['appid'])})"
 
 
 def build_common_games_payload(result) -> dict:
