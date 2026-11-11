@@ -692,13 +692,17 @@ class GameService:
         db.session.commit()
         logger.info(f"Game {game.id} has been deleted.")
 
-    def register_player(self, slug: str, user_id: str, force: bool = False) -> Game:
+    def register_player(
+        self, slug: str, user_id: str, force: bool = False, guest: bool = False
+    ) -> Game:
         """Register a player to a game (concurrent-safe).
 
         Args:
             slug: Game slug.
             user_id: User ID to register.
             force: If True, bypass capacity and status checks.
+            guest: If True, the player is only invited for this week and will be
+                removed by ``clear_guests``.
 
         Returns:
             Updated Game instance.
@@ -747,6 +751,8 @@ class GameService:
 
             # Add player
             locked_game.players.append(user)
+            if guest:
+                locked_game.guests.append(user)
 
             # Auto-close if full
             if (
@@ -776,7 +782,14 @@ class GameService:
             db.session.commit()
 
             # Log event
-            if force:
+            if guest:
+                log_game_event(
+                    "register",
+                    locked_game.id,
+                    "Le·a joueur·euse a été invité·e pour la semaine.",
+                    user_id=user.id,
+                )
+            elif force:
                 log_game_event(
                     "register",
                     locked_game.id,
@@ -834,10 +847,14 @@ class GameService:
             )
 
         game.players.remove(user)
+        was_guest = user in game.guests
+        if was_guest:
+            game.guests.remove(user)
 
-        # Reopen if it was full
+        # Reopen if it was full; a guest never held a public seat
         if (
-            game.status == "closed"
+            not was_guest
+            and game.status == "closed"
             and len(game.players) < game.party_size
             and not game.party_selection
         ):
@@ -863,6 +880,92 @@ class GameService:
         )
 
         return game
+
+    def clear_guests(self, slug: str, user_id: str | None = None) -> int:
+        """Remove every guest of the week from a game, keeping permanent members.
+
+        Args:
+            slug: Game slug.
+            user_id: ID of the user performing the action.
+
+        Returns:
+            Number of guests removed.
+        """
+        game = self.get_by_slug(slug)
+        guests = list(game.guests)
+        for guest in guests:
+            self.unregister_player(slug, guest.id)
+        if guests:
+            log_game_event(
+                "edit",
+                game.id,
+                f"Les invité·es de la semaine ont été retiré·es ({len(guests)}).",
+                user_id=user_id,
+            )
+        return len(guests)
+
+    def add_organizer(self, slug: str, user_id: str) -> Game:
+        """Allow a member to manage the players of a game, like its GM.
+
+        Args:
+            slug: Game slug.
+            user_id: ID of the new organizer.
+
+        Returns:
+            Updated Game instance.
+
+        Raises:
+            ValidationError: If the user is the GM or already an organizer.
+        """
+        game = self.get_by_slug(slug)
+        user = self.user_service.get_by_id(user_id)
+        if user.id == game.gm_id:
+            raise ValidationError("Le·a MJ gère déjà la partie.", field="user_id")
+        if user in game.organizers:
+            raise ValidationError("Cette personne est déjà organisatrice.", field="user_id")
+        game.organizers.append(user)
+        db.session.commit()
+        log_game_event(
+            "edit", game.id, "Un·e co-organisateur·ice a été ajouté·e.", user_id=user.id
+        )
+        return game
+
+    def remove_organizer(self, slug: str, user_id: str) -> Game:
+        """Withdraw a member's right to manage the players of a game.
+
+        Args:
+            slug: Game slug.
+            user_id: ID of the organizer to remove.
+
+        Returns:
+            Updated Game instance.
+        """
+        game = self.get_by_slug(slug)
+        user = self.user_service.get_by_id(user_id)
+        if user in game.organizers:
+            game.organizers.remove(user)
+            db.session.commit()
+            log_game_event(
+                "edit", game.id, "Un·e co-organisateur·ice a été retiré·e.", user_id=user.id
+            )
+        return game
+
+    def can_manage_players(self, game: Game, user_id: str | None, is_admin: bool = False) -> bool:
+        """Tell whether a user may add and remove the players of a game.
+
+        Args:
+            game: Game instance.
+            user_id: ID of the user, or None when logged out.
+            is_admin: Whether the user is an admin.
+
+        Returns:
+            True for the GM, an admin or a co-organizer.
+        """
+        if is_admin:
+            return True
+        if not user_id:
+            return False
+        return user_id == game.gm_id or any(u.id == user_id for u in game.organizers)
 
     def clone(self, slug: str) -> dict:
         """Clone a game (return data dict for form prefill).

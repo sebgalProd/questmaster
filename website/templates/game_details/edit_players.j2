@@ -32,7 +32,8 @@
                         <div class="player">
                           <img src="{{ player.avatar }}" alt="{{ player.name }}" />
                           <div title="{{ player.name }}">
-                            {{ player.name }}<br />
+                            {{ player.name }}
+                            {% if player in game.guests %}<span class="badge text-bg-info">Invité·e</span>{% endif %}<br />
                             <input class="form-check-input" type="checkbox" role="switch" id="register{{ player.id }}"
                               name="{{ player.id }}" checked>
                           </div>
@@ -44,6 +45,12 @@
                         <button type="submit" class="btn btn-primary w-100" name="action" value="manage">
                           <i class="bi bi-check2-circle"></i>Confirmer la sélection
                         </button>
+                        {% if game.guests %}
+                        <button type="submit" class="btn btn-outline-danger w-100 mt-2" name="action"
+                          value="clear_guests">
+                          <i class="bi bi-person-dash"></i>Retirer les {{ game.guests|length }} invité·es de la semaine
+                        </button>
+                        {% endif %}
                       </div>
                     </div>
                   </div>
@@ -59,18 +66,55 @@
               </h2>
               <div id="addPlayer" class="accordion-collapse collapse" data-bs-parent="#accordionManagePlayers">
                 <div class="accordion-body">
-                  <p>Pour ajouter un·e joueur·euse, vous aurez besoin de son ID Discord. Si vous ne savez pas comment le
-                    trouver, vous pouvez consulter <a
+                  <p>Indiquez son pseudo Discord (ou, à défaut, son <a
                       href="https://support.discord.com/hc/fr/articles/206346498-O%C3%B9-trouver-l-ID-de-mon-compte-utilisateur-serveur-message"
-                      target="_blank" rel="noopener noreferrer">cet article.</a></p>
-                  <div class="row gy-4 p-4">
-                    <input type="text" class="form-control" id="discordID" placeholder="ID Discord" name="discord_id">
+                      target="_blank" rel="noopener noreferrer">ID Discord</a>). Un·e <strong>invité·e de la
+                    semaine</strong> sera retiré·e avec les autres invité·es par le bouton « Retirer les invité·es »,
+                    les membres permanent·es restent.</p>
+                  <div class="row gy-3 p-4">
+                    <input type="text" class="form-control" id="discordID" placeholder="Pseudo ou ID Discord"
+                      name="discord_id">
+                    <div class="form-check">
+                      <input class="form-check-input" type="checkbox" id="guest" name="guest">
+                      <label class="form-check-label" for="guest">Invité·e de la semaine seulement</label>
+                    </div>
                     <button type="submit" class="btn btn-primary" name="action" value="add"><i
                         class="bi bi-person-add"></i>Ajouter</button>
                   </div>
                 </div>
               </div>
             </div>
+            {% if payload['user_id'] == game.gm.id or payload['is_admin'] %}
+            <div class="accordion-item">
+              <h2 class="accordion-header">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                  data-bs-target="#organizers" aria-expanded="false" aria-controls="organizers">
+                  Co-organisateur·ices
+                </button>
+              </h2>
+              <div id="organizers" class="accordion-collapse collapse" data-bs-parent="#accordionManagePlayers">
+                <div class="accordion-body">
+                  <p>Les co-organisateur·ices peuvent ajouter et retirer des joueur·euses et des invité·es, comme
+                    vous. Elles et ils ne peuvent ni modifier l'annonce, ni choisir d'autres co-organisateur·ices.</p>
+                  {% for organizer in game.organizers %}
+                  <div class="d-flex align-items-center justify-content-between mb-2">
+                    <span>{{ organizer.name }}</span>
+                    <button type="submit" class="btn btn-sm btn-outline-danger"
+                      formaction="/annonces/{{ game.slug }}/gerer/?action=remove_organizer" name="organizer_id"
+                      value="{{ organizer.id }}"><i class="bi bi-x-lg"></i> Retirer</button>
+                  </div>
+                  {% else %}
+                  <p class="text-center">Aucun·e co-organisateur·ice pour le moment.</p>
+                  {% endfor %}
+                  <div class="row gy-3 p-4">
+                    <input type="text" class="form-control" placeholder="Pseudo ou ID Discord" name="member">
+                    <button type="submit" class="btn btn-primary" name="action" value="add_organizer"><i
+                        class="bi bi-person-gear"></i>Ajouter</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            {% endif %}
           </div>
         </div>
         <div class="modal-footer">

@@ -1,8 +1,11 @@
 """User service for user-related business logic."""
 
+import re
 from datetime import datetime, timezone
 
-from website.exceptions import NotFoundError
+from sqlalchemy import func
+
+from website.exceptions import NotFoundError, ValidationError
 from website.extensions import db
 from website.models import User
 from website.models.user import get_user_profile as _get_user_profile
@@ -60,6 +63,59 @@ class UserService:
         db.session.commit()
         user.init_on_load()
         return user, True
+
+    def resolve_member(self, query: str, discord) -> User:
+        """Find a member from a Discord ID or a pseudo typed by a person.
+
+        Known members are looked up by name first; otherwise the Discord server is
+        searched, and a member found there is created in the database.
+
+        Args:
+            query: Discord ID, or name, username or server nickname (a leading @ is ignored).
+            discord: DiscordService used to search the server's members.
+
+        Returns:
+            The matching User.
+
+        Raises:
+            ValidationError: If nobody or several members match.
+        """
+        query = query.strip().lstrip("@").strip()
+        if not query:
+            raise ValidationError("Indiquez un pseudo ou un ID Discord.", field="member")
+        if re.fullmatch(r"\d{17,21}", query):
+            return self.get_or_create(query)[0]
+
+        lowered = query.lower()
+        known = (
+            User.query.filter(
+                (func.lower(User.name) == lowered) | (func.lower(User.username) == lowered)
+            )
+            .limit(2)
+            .all()
+        )
+        if len(known) == 1:
+            return known[0]
+
+        members = discord.search_members(query, limit=10)
+        exact = [m for m in members if lowered in _member_names(m)]
+        candidates = exact or members
+        if not candidates:
+            raise ValidationError(
+                f"Personne ne s'appelle « {query} » sur le serveur.", field="member"
+            )
+        if len(candidates) > 1:
+            names = ", ".join(_member_label(m) for m in candidates)
+            raise ValidationError(
+                f"Plusieurs membres correspondent à « {query} » : {names}. "
+                "Précisez le pseudo ou utilisez l'ID Discord.",
+                field="member",
+            )
+        member = candidates[0]
+        user = member["user"]
+        return self.get_or_create(
+            user["id"], name=_member_label(member), username=user.get("username")
+        )[0]
 
     def link_steam_from_connections(self, user: User, connections: list) -> bool:
         """Store the SteamID found in the user's Discord connections.
@@ -182,3 +238,14 @@ class UserService:
         user.not_player_as_of = None
         db.session.commit()
         return user
+
+
+def _member_names(member: dict) -> set[str]:
+    user = member.get("user", {})
+    names = (member.get("nick"), user.get("global_name"), user.get("username"))
+    return {n.lower() for n in names if n}
+
+
+def _member_label(member: dict) -> str:
+    user = member.get("user", {})
+    return member.get("nick") or user.get("global_name") or user.get("username") or user["id"]

@@ -108,6 +108,22 @@ class Discord:
         """
         return self._request(endpoint=f"/guilds/{self.guild_id}/members/{user_id}", method="GET")
 
+    def search_members(self, query: str, limit: int = 10) -> list[dict]:
+        """Search guild members whose username or nickname starts with ``query``.
+
+        Args:
+            query: Beginning of the username or nickname.
+            limit: Maximum number of members returned.
+
+        Returns:
+            List of guild member dicts (user, nick, roles).
+        """
+        return self._request(
+            "GET",
+            f"/guilds/{self.guild_id}/members/search",
+            params={"query": query, "limit": limit},
+        )
+
     def send_message(self, content: str, channel_id: str) -> dict:
         """Send a text message to a Discord channel.
 

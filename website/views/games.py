@@ -4,6 +4,7 @@ import locale
 from datetime import datetime
 
 from flask import Blueprint, Response, flash, redirect, render_template, request, url_for
+from markupsafe import escape
 
 from config.constants import (
     DEFAULT_TIMEFORMAT,
@@ -148,7 +149,15 @@ def get_game_details(slug):
     payload = who()
     game = game_service.get_by_slug_or_404(slug)
     is_player = "user_id" in payload and game_service.is_player(game, payload["user_id"])
-    return render_template("game_details.j2", game=game, is_player=is_player)
+    can_manage_players = game_service.can_manage_players(
+        game, payload.get("user_id"), payload.get("is_admin", False)
+    )
+    return render_template(
+        "game_details.j2",
+        game=game,
+        is_player=is_player,
+        can_manage_players=can_manage_players,
+    )
 
 
 @game_bp.route("/annonce/", methods=["GET"])
@@ -442,21 +451,47 @@ def manage_game_registration(slug):
     if game.status == "archived":
         flash("Impossible de gérer les joueur·euses d'une partie archivée.", "danger")
         return redirect(url_for(GAME_DETAILS_ROUTE, slug=slug))
-    if game.gm_id != user_id and not payload["is_admin"]:
-        flash("Vous n'êtes pas autorisé·e à faire cette action.", "danger")
-        return redirect(url_for(GAME_DETAILS_ROUTE, slug=slug))
-
     data = request.values.to_dict()
     action = data.get("action")
+    # Only the GM and admins choose the co-organizers; co-organizers manage the players
+    is_owner = game.gm_id == user_id or payload["is_admin"]
+    allowed = (
+        is_owner
+        if action in ("add_organizer", "remove_organizer")
+        else game_service.can_manage_players(game, user_id, payload["is_admin"])
+    )
+    if not allowed:
+        flash("Vous n'êtes pas autorisé·e à faire cette action.", "danger")
+        return redirect(url_for(GAME_DETAILS_ROUTE, slug=slug))
 
     try:
         if action == "manage":
             _handle_remove_players(game, data)
         elif action == "add":
-            _handle_add_player(game, slug, data, payload)
+            _handle_add_player(game, data)
+        elif action == "clear_guests":
+            removed = game_service.clear_guests(slug, user_id=user_id)
+            flash(f"{removed} invité·e retiré·e.", "success")
+            return redirect(url_for(GAME_DETAILS_ROUTE, slug=slug))
+        elif action == "add_organizer":
+            member = UserService().resolve_member(data.get("member", ""), discord_service)
+            game_service.add_organizer(slug, member.id)
+            flash(f"{member.name} peut maintenant gérer les joueur·euses.", "success")
+            return redirect(url_for(GAME_DETAILS_ROUTE, slug=slug))
+        elif action == "remove_organizer":
+            game_service.remove_organizer(slug, data.get("organizer_id", ""))
+            flash("Co-organisateur·ice retiré·e.", "success")
+            return redirect(url_for(GAME_DETAILS_ROUTE, slug=slug))
         else:
             flash("Action demandée non gérée.", "danger")
             return redirect(url_for(GAME_DETAILS_ROUTE, slug=slug))
+    except ValidationError as e:
+        # The message may quote what was typed or Discord names, and .j2 is not autoescaped
+        flash(str(escape(e.message)), "danger")
+        return redirect(url_for(GAME_DETAILS_ROUTE, slug=slug))
+    except DuplicateRegistrationError:
+        flash("Cette personne est déjà inscrite.", "warning")
+        return redirect(url_for(GAME_DETAILS_ROUTE, slug=slug))
     except QuestMasterError as e:
         logger.exception("Error during game registration management")
         flash(f"Erreur pendant l'inscription: {e}.", "danger")
@@ -604,24 +639,19 @@ def _handle_remove_players(game, data):
         game_service.unregister_player(game.slug, player.id)
 
 
-def _handle_add_player(game, slug, data, payload):
-    """Add a new player to the game by Discord ID via service."""
-    uid = data.get("discord_id")
-    if not uid:
-        flash("Identifiant Discord manquant.", "danger")
-        return redirect(url_for(GAME_DETAILS_ROUTE, slug=slug))
+def _handle_add_player(game, data):
+    """Add a player, found by pseudo or Discord ID, possibly as a guest of the week.
 
-    user, created = UserService().get_or_create(str(uid))
-    if created:
-        logger.info(f"User {uid} created in database")
-
+    Raises:
+        ValidationError: If nobody matches, or the member is not a player on Discord.
+    """
+    user = UserService().resolve_member(data.get("discord_id", ""), discord_service)
     user.refresh_roles()
     if not user.is_player:
-        flash("Cette personne n'est pas un·e joueur·euse sur le Discord", "danger")
-        return redirect(url_for(GAME_DETAILS_ROUTE, slug=slug))
-
-    force = payload["user_id"] == game.gm_id or payload.get("is_admin", False)
-    game_service.register_player(slug, user.id, force=force)
+        raise ValidationError(
+            "Cette personne n'est pas un·e joueur·euse sur le Discord.", field="member"
+        )
+    game_service.register_player(game.slug, user.id, force=True, guest="guest" in data)
 
 
 # ---------------------------------------------------------------------------

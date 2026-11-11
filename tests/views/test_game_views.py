@@ -564,6 +564,117 @@ class TestGMPlayerManagement:
         assert "Vous n'êtes pas autorisé·e à faire cette action." in body
 
 
+class TestWeeklyGuestsAndOrganizers:
+    """Co-organizers manage the players; guests of the week are removed together."""
+
+    @pytest.fixture
+    def organizer_game(self, db_session, closed_game, gm_user):
+        """A closed game (GM: admin) where the GM user is a co-organizer."""
+        closed_game.organizers.append(gm_user)
+        db_session.flush()
+        return closed_game
+
+    def test_organizer_sees_manage_button(
+        self, logged_in_gm, mock_discord_lookups, mock_discord_service, organizer_game
+    ):
+        body = logged_in_gm.get(f"/annonces/{organizer_game.slug}/").data.decode()
+        assert 'id="manageButton"' in body
+        assert 'id="archiveButton"' not in body
+
+    def test_organizer_invites_guest_by_pseudo(
+        self,
+        logged_in_gm,
+        mock_discord_lookups,
+        mock_csrf,
+        mock_discord_service,
+        organizer_game,
+        regular_user,
+    ):
+        response = logged_in_gm.post(
+            f"/annonces/{organizer_game.slug}/gerer/",
+            data={"action": "add", "discord_id": "@Grew", "guest": "on"},
+            follow_redirects=True,
+        )
+        assert "Liste des joueur·euses mise à jour." in response.data.decode()
+        assert regular_user in organizer_game.players
+        assert regular_user in organizer_game.guests
+
+    def test_organizer_clears_guests(
+        self,
+        logged_in_gm,
+        mock_discord_lookups,
+        mock_csrf,
+        mock_discord_service,
+        db_session,
+        organizer_game,
+        regular_user,
+        gm_user,
+    ):
+        organizer_game.players.extend([regular_user, gm_user])
+        organizer_game.guests.append(regular_user)
+        db_session.flush()
+
+        response = logged_in_gm.post(
+            f"/annonces/{organizer_game.slug}/gerer/",
+            data={"action": "clear_guests"},
+            follow_redirects=True,
+        )
+        assert "1 invité·e retiré·e." in response.data.decode()
+        assert organizer_game.players == [gm_user]
+
+    def test_unknown_pseudo_is_reported_escaped(
+        self, logged_in_gm, mock_discord_lookups, mock_csrf, mock_discord_service, organizer_game
+    ):
+        mock_discord_service.search_members.return_value = []
+        response = logged_in_gm.post(
+            f"/annonces/{organizer_game.slug}/gerer/",
+            data={"action": "add", "discord_id": "<b>x</b>"},
+            follow_redirects=True,
+        )
+        body = response.data.decode()
+        # .j2 templates are not autoescaped: the typed pseudo must be escaped by the view
+        assert "Personne ne s&#39;appelle « &lt;b&gt;x&lt;/b&gt; » sur le serveur." in body
+        assert "Liste des joueur·euses mise à jour." not in body
+
+    def test_organizer_cannot_add_organizers(
+        self,
+        logged_in_gm,
+        mock_discord_lookups,
+        mock_csrf,
+        mock_discord_service,
+        organizer_game,
+        regular_user,
+    ):
+        response = logged_in_gm.post(
+            f"/annonces/{organizer_game.slug}/gerer/",
+            data={"action": "add_organizer", "member": regular_user.id},
+            follow_redirects=True,
+        )
+        assert "Vous n'êtes pas autorisé·e à faire cette action." in response.data.decode()
+        assert regular_user not in organizer_game.organizers
+
+    def test_gm_adds_and_removes_organizer(
+        self,
+        logged_in_admin,
+        mock_discord_lookups,
+        mock_csrf,
+        mock_discord_service,
+        closed_game,
+        gm_user,
+    ):
+        logged_in_admin.post(
+            f"/annonces/{closed_game.slug}/gerer/",
+            data={"action": "add_organizer", "member": "jadow"},
+        )
+        assert closed_game.organizers == [gm_user]
+
+        logged_in_admin.post(
+            f"/annonces/{closed_game.slug}/gerer/",
+            data={"action": "remove_organizer", "organizer_id": gm_user.id},
+        )
+        assert closed_game.organizers == []
+
+
 # -- Game Sessions ---------------------------------------------------------
 
 

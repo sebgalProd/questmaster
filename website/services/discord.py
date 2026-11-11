@@ -68,6 +68,21 @@ class DiscordService:
         """
         return self.bot.get_user(user_id)
 
+    def search_members(self, query: str, limit: int = 10) -> list[dict]:
+        """Search guild members by the beginning of their username or nickname.
+
+        Args:
+            query: Beginning of the username or nickname.
+            limit: Maximum number of members returned.
+
+        Returns:
+            List of guild member dicts.
+
+        Raises:
+            DiscordAPIError: If the API request fails.
+        """
+        return self.bot.search_members(query, limit=limit)
+
     def add_role_to_user(self, user_id: str, role_id: str) -> dict:
         """Add a role to a user.
 

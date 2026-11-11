@@ -34,6 +34,20 @@ players_table = db.Table(
     db.UniqueConstraint("game_id", "player_id", name="uix_game_user"),
 )
 
+# Players invited for the current week only, removed together by "clear guests"
+guests_table = db.Table(
+    "game_guests",
+    db.Column("game_id", db.ForeignKey("game.id", ondelete="CASCADE"), primary_key=True),
+    db.Column("user_id", db.ForeignKey("user.id", ondelete="CASCADE"), primary_key=True),
+)
+
+# Members who may manage the players of a game, besides its GM
+organizers_table = db.Table(
+    "game_organizers",
+    db.Column("game_id", db.ForeignKey("game.id", ondelete="CASCADE"), primary_key=True),
+    db.Column("user_id", db.ForeignKey("user.id", ondelete="CASCADE"), primary_key=True),
+)
+
 
 class Game(db.Model):
     """
@@ -65,6 +79,8 @@ class Game(db.Model):
     party_selection = db.Column(db.Boolean(), nullable=False, default=False)
     create_voice = db.Column(db.Boolean(), nullable=False, default=False)
     players = db.relationship("User", secondary=players_table, backref="games")
+    guests = db.relationship("User", secondary=guests_table)
+    organizers = db.relationship("User", secondary=organizers_table)
     xp = db.Column("experience", Enum(*GAME_XP, name="game_xp_enum"), default="all")
     date = db.Column(db.DateTime, nullable=True)
     session_length = db.Column(db.DECIMAL(2, 1), nullable=True)

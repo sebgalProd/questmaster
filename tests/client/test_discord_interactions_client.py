@@ -49,3 +49,12 @@ def test_discord_requests_have_a_timeout():
     with patch("website.client.discord.requests.request", return_value=ok) as req:
         client._request("GET", "/users/@me")
     assert req.call_args.kwargs.get("timeout")
+
+
+def test_search_members():
+    client = _client()
+    client._request.return_value = [{"user": {"id": "1"}}]
+    assert client.search_members("zel", limit=5) == [{"user": {"id": "1"}}]
+    client._request.assert_called_once_with(
+        "GET", "/guilds/guild1/members/search", params={"query": "zel", "limit": 5}
+    )

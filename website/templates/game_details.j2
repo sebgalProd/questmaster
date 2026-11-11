@@ -303,14 +303,24 @@
                     data-bs-title="Cloner l'annonce."><i class="bi bi-files"></i> Cloner</a>
                 </span>
             </form>
+            {% elif can_manage_players and game.status not in ['draft', 'open', 'archived'] %}
+            <div class="actions mt-2">
+              <span class="d-inline-block d-grid" data-bs-toggle="tooltip"
+                data-bs-title="Gérer les inscriptions des joueur·euses.">
+                <button id="manageButton" type="button" class="btn btn-primary" data-bs-toggle="modal"
+                  data-bs-target="#editPlayers"><i class="bi bi-people"></i> Gérer</button>
+              </span>
+            </div>
             {% endif %}
           </div>
         </div>
         {% if request.path not in ['/demo/gerer/', '/demo/inscription/'] %}
         {% if payload['user_id'] == game.gm.id or payload['is_admin'] %}
         {% include 'game_details/add_session.j2' %}
-        {% include 'game_details/edit_players.j2' %}
         {% include 'game_details/confirm_archive.j2' %}
+        {% endif %}
+        {% if can_manage_players %}
+        {% include 'game_details/edit_players.j2' %}
         {% endif %}
         {% include 'game_details/alert_admin.j2' %}
         {% endif %}

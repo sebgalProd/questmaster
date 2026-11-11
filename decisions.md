@@ -145,3 +145,23 @@ Des membres trouvaient la commande intrusive.
   heures donnait celles de l'autre. Le tri par temps de jeu cumulé reste.
 - Pas encore d'inscription volontaire ni de commande pour se retirer : à faire si des membres le
   demandent (aujourd'hui, la seule sortie est de passer ses jeux en privé dans Steam).
+
+## 11. Invité·es de la semaine et co-organisateur·ices (2026-11-11)
+
+Besoin : un groupe du mercredi invite chaque semaine de nouvelles personnes ; des habitué·es
+« toujours présent·es » décident.
+
+- **Co-organisateur·ices** (table `game_organizers`) : choisi·es par le MJ ou un admin dans
+  « Gérer ». Elles et ils ajoutent et retirent des joueur·euses et des invité·es, mais ne
+  modifient pas l'annonce et ne nomment pas d'autres co-organisateur·ices.
+- **Invité·es de la semaine** (table `game_guests`, sous-ensemble des joueur·euses) : case
+  « Invité·e de la semaine seulement » à l'ajout. Le bouton « Retirer les invité·es de la
+  semaine » les désinscrit tous (rôle Discord retiré) et garde les membres permanent·es.
+- Retirer un·e invité·e ne rouvre jamais la partie (un·e invité·e n'occupait pas une place
+  publique). Pour un groupe sur invitation, ouvrir la partie « silencieusement ».
+- Ajout par **pseudo** ou ID : nom connu du site d'abord, puis recherche parmi les membres du
+  serveur Discord (`/guilds/{id}/members/search`). Plusieurs résultats : la liste est proposée.
+- Choix laissés de côté : pas de retrait automatique le jeudi (bouton manuel), case
+  « invité·e » décochée par défaut, co-organisateur·ices non copié·es au clonage.
+- Les gabarits `.j2` ne sont pas échappés automatiquement : le message d'erreur qui cite le
+  pseudo tapé est échappé dans la vue.
