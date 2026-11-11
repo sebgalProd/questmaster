@@ -632,7 +632,7 @@ class TestWeeklyGuestsAndOrganizers:
             follow_redirects=True,
         )
         body = response.data.decode()
-        # .j2 templates are not autoescaped: the typed pseudo must be escaped by the view
+        # The typed pseudo comes back escaped once (template autoescape), never double-escaped
         assert "Personne ne s&#39;appelle « &lt;b&gt;x&lt;/b&gt; » sur le serveur." in body
         assert "Liste des joueur·euses mise à jour." not in body
 

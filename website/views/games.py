@@ -4,7 +4,6 @@ import locale
 from datetime import datetime
 
 from flask import Blueprint, Response, flash, redirect, render_template, request, url_for
-from markupsafe import escape
 
 from config.constants import (
     DEFAULT_TIMEFORMAT,
@@ -486,8 +485,7 @@ def manage_game_registration(slug):
             flash("Action demandée non gérée.", "danger")
             return redirect(url_for(GAME_DETAILS_ROUTE, slug=slug))
     except ValidationError as e:
-        # The message may quote what was typed or Discord names, and .j2 is not autoescaped
-        flash(str(escape(e.message)), "danger")
+        flash(e.message, "danger")
         return redirect(url_for(GAME_DETAILS_ROUTE, slug=slug))
     except DuplicateRegistrationError:
         flash("Cette personne est déjà inscrite.", "warning")
